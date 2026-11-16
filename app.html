@@ -45,7 +45,7 @@
   .ic { font-size: 0 !important; min-width: 42px; min-height: 38px; padding: 6px !important; } .ic::before { content: ''; display: block; width: 24px; height: 24px; margin: auto; background: currentColor; -webkit-mask: var(--ico) center/contain no-repeat; mask: var(--ico) center/contain no-repeat; }
   #palbox, #anim { background: var(--panel); border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--line); padding: 6px; } #palbox { width: 100%; box-sizing: border-box; } #anim { flex-direction: row; } #anim #strip { flex-basis: 100%; order: 5; } #palbox #pal { justify-content: center; } #palbox .addrow { display: flex; gap: 6px; align-items: center; justify-content: center; } #colp, #curc { display: none !important; }
   .land #app {  } .land #anim { gap: 3px; margin: 0; } .land #anim button { padding: 4px !important; } .land #palbox { gap: 3px; margin: 0; } .land #palbox .sw { width: 24px; height: 24px; } .land #palbox #pal { gap: 3px; } .land #palbox .row { margin: 0; }
-  #joyw, #ptr { transition: opacity .5s; }
+  #joyw, #ptr { transition: opacity .5s; } #joy.act { filter: brightness(1.25); } html, body { overscroll-behavior: none; }
   .land #wrap { padding-block: 3px 2px; } .land #palbox input[type=color] { width: 30px; height: 22px; } .land #palbox .addrow { gap: 4px; } .land #palbox .addrow .dim { font-size: 11px; }
   .land .ic { min-width: 31px; min-height: 31px; padding: 3px !important; } .land .ic::before { width: 19px; height: 19px; } .land #palbox .sw, .land .sw { width: 20px; height: 20px; } .land #anim .grip, .land #palbox .grip { padding: 1px 6px; font-size: 15px; } .land #anim { gap: 2px; } .land #palbox { padding: 4px; } .land #anim { padding: 4px; } .land #strip button { padding: 2px 6px !important; min-height: 24px; }
   .land #bar, .land #bar2 { gap: 4px; } .land #bar select, .land #bar #auto, .land #bar2 button { padding: 3px 6px; }
@@ -1047,6 +1047,7 @@
     joy.addEventListener('pointerdown', function (e) {
         e.preventDefault();
         jid = e.pointerId;
+        joy.classList.add('act');
         joy.setPointerCapture(jid);
         hs = LP(e);
         hbase = JO.slice();
@@ -1099,6 +1100,7 @@
             catch (er) { }
         }
         jid = null;
+        joy.classList.remove('act');
         jx = jy = 0;
         knob.style.transform = 'translate(0,0)';
     }
@@ -1723,7 +1725,7 @@
     var stt = $('setTools');
     stt.appendChild(rcB);
     stt.appendChild(rfB);
-    var APP_VER = '2026-11-16.3';
+    var APP_VER = '2026-11-16.4';
     function hardUpdate() {
         var done = function () { location.reload(); }, ps = [];
         try {
@@ -1869,15 +1871,23 @@
     setInterval(keepOn, 1500);
     keepOn();
     /* حلقة الحركة */
-    var last = performance.now();
+    var last = performance.now(), sjx = 0, sjy = 0;
     function loop(t) {
         var dt = Math.min(0.05, (t - last) / 1000);
         last = t;
-        var mag = Math.hypot(jx, jy);
+        var kk = Math.min(1, dt * 20);
+        sjx += (jx - sjx) * kk;
+        sjy += (jy - sjy) * kk;
+        if (Math.abs(sjx) < 0.002)
+            sjx = 0;
+        if (Math.abs(sjy) < 0.002)
+            sjy = 0;
+        var jx_ = sjx, jy_ = sjy;
+        var mag = Math.hypot(jx_, jy_);
         if (pieOpen) {
             var ni = -1;
             if (mag > 0.5) {
-                var an = Math.atan2(jy, jx) * 180 / Math.PI + 90;
+                var an = Math.atan2(jy_, jx_) * 180 / Math.PI + 90;
                 ni = Math.round((((an % 360) + 360) % 360) / 60) % 6;
             }
             if (ni !== pieIdx) {
@@ -1886,10 +1896,10 @@
                     $('pi' + q).classList.toggle('hot', q === ni);
             }
         }
-        if (MM && mag > 0.07 && !pieOpen) {
-            var spp = SPD * 48 * Math.pow((mag - 0.07) / 0.93, 1.6) / mag * (pOver ? 0.4 : 1) * (PREC ? 0.35 : 1);
-            ptx = Math.max(0, Math.min(VW() - 25, ptx + jx * spp * dt));
-            pty = Math.max(0, Math.min(VH() - 30, pty + jy * spp * dt));
+        if (MM && mag > 0.09 && !pieOpen) {
+            var spp = SPD * 48 * Math.pow((mag - 0.09) / 0.91, 1.6) / mag * (pOver ? 0.4 : 1) * (PREC ? 0.35 : 1);
+            ptx = Math.max(0, Math.min(VW() - 25, ptx + jx_ * spp * dt));
+            pty = Math.max(0, Math.min(VH() - 30, pty + jy_ * spp * dt));
             ptrShow();
             if (pdrag)
                 pdrag.g._place(ptx - pdrag.ox, pty - pdrag.oy);
@@ -1924,16 +1934,16 @@
             }
             draw();
         }
-        else if (mag > 0.07) {
-            var spj = SPD * Math.pow((mag - 0.07) / 0.93, 1.05) / mag;
-            cx = Math.max(0, Math.min(W - 1, cx + jx * spj * dt));
-            cy = Math.max(0, Math.min(H - 1, cy + jy * spj * dt));
+        else if (mag > 0.09) {
+            var spj = SPD * Math.pow((mag - 0.09) / 0.91, 1.05) / mag;
+            cx = Math.max(0, Math.min(W - 1, cx + jx_ * spj * dt));
+            cy = Math.max(0, Math.min(H - 1, cy + jy_ * spj * dt));
             var nx = Math.round(cx), ny = Math.round(cy);
             if (AUTO && !held && !autoOn) {
                 autoOn = true;
                 snap();
-                lastX = Math.round(cx - jx * spj * dt);
-                lastY = Math.round(cy - jy * spj * dt);
+                lastX = Math.round(cx - jx_ * spj * dt);
+                lastY = Math.round(cy - jy_ * spj * dt);
                 put(lastX, lastY, AUTO === 2);
             }
             var dm = held || (AUTO === 1 ? 'd' : AUTO === 2 ? 'e' : null);
@@ -1944,7 +1954,7 @@
             }
             draw();
         }
-        if (mag <= 0.07)
+        if (mag <= 0.09)
             autoOn = false;
         if (MM) {
             var rr2 = lrect(cv), ov = ptx >= rr2.left && ptx <= rr2.left + rr2.width && pty >= rr2.top && pty <= rr2.top + rr2.height;
@@ -2254,7 +2264,15 @@
         catch (e) { }
     });
     var rzT = 0;
-    window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { fit(); draw(); }, 180); });
+    function refit() { clearTimeout(rzT); rzT = setTimeout(function () { fit(); draw(); }, 180); }
+    window.addEventListener('resize', refit);
+    window.addEventListener('orientationchange', refit);
+    window.addEventListener('pageshow', refit);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden)
+        refit(); });
+    if (window.visualViewport)
+        window.visualViewport.addEventListener('resize', refit);
+    [400, 1200, 2500].forEach(function (d) { setTimeout(refit, d); });
     window.__app = { ptr: function (x, y) { ptx = x; pty = y; ptrShow(); }, grid: function () { return grid.slice(); }, text: toText };
     newGrid();
     pal();
