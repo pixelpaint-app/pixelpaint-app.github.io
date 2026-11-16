@@ -1,4 +1,4 @@
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#05070a"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><title>مرسام البكسل</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#05070a"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><title>مرسام البكسل</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
   :root { color-scheme: dark; --bg:#8fb2d6; --panel:#e9e0cf; --line:#2a2230; --fg:#2a2230; --dim:#4a5a70; --btn:#f7f0e0; --acc:#f0a830; --acc2:#3a9be0; --bad:#e04a38; --dark:#2a2230; }
@@ -274,7 +274,11 @@
     }
     catch (e) { }
     function draw() {
-        var x, y, i, c, GR = playing ? frames[pi % frames.length] : grid;
+        if ((SEL || FL) && (AT !== 6 || (FL && FL.f !== fi)))
+            selCancel();
+        if (SEL && (SEL.f !== fi || SEL.x1 >= W || SEL.y1 >= H))
+            SEL = null;
+        var x, y, c, GR = playing ? frames[pi % frames.length] : grid;
         for (y = 0; y < H; y++)
             for (x = 0; x < W; x++) {
                 c = GR[y * W + x];
@@ -312,6 +316,7 @@
             ctx.lineTo(W * cs, y * cs + .5);
         }
         ctx.stroke();
+        selDraw();
         fxDraw();
         var mx = Math.round(cx), my = Math.round(cy), ax = cx * cs + cs / 2, ay = cy * cs + cs / 2;
         if (SYM) {
@@ -555,8 +560,129 @@
             st.push([px0 + 1, py0], [px0 - 1, py0], [px0, py0 + 1], [px0, py0 - 1]);
         }
     }
-    var AS = null;
+    var AS = null, SEL = null, FL = null;
+    function selCancel() {
+        if (FL) {
+            var u = undo.pop();
+            if (u && u.f < frames.length) {
+                frames[u.f] = u.g;
+                if (fi === u.f)
+                    grid = frames[fi];
+            }
+            FL = null;
+        }
+        SEL = null;
+        AS = null;
+    }
+    function selDraw() {
+        if (AT !== 6)
+            return;
+        function box(x0, y0, x1, y1) {
+            ctx.save();
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#000';
+            ctx.strokeRect(x0 * cs + 1.5, y0 * cs + 1.5, (x1 - x0 + 1) * cs - 3, (y1 - y0 + 1) * cs - 3);
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 5]);
+            ctx.lineDashOffset = -((performance.now() / 80) | 0) % 11;
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(x0 * cs + 1.5, y0 * cs + 1.5, (x1 - x0 + 1) * cs - 3, (y1 - y0 + 1) * cs - 3);
+            ctx.restore();
+        }
+        if (FL) {
+            var ox = Math.round(cx) - FL.dx, oy = Math.round(cy) - FL.dy;
+            ctx.save();
+            ctx.globalAlpha = .85;
+            for (var j = 0; j < FL.h; j++)
+                for (var i = 0; i < FL.w; i++) {
+                    var v = FL.d[j * FL.w + i];
+                    if (v >= 0) {
+                        ctx.fillStyle = PAL[v];
+                        ctx.fillRect((ox + i) * cs, (oy + j) * cs, cs, cs);
+                    }
+                }
+            ctx.restore();
+            box(ox, oy, ox + FL.w - 1, oy + FL.h - 1);
+        }
+        else if (SEL)
+            box(SEL.x0, SEL.y0, SEL.x1, SEL.y1);
+    }
+    function selAct(kind, x, y) {
+        x = Math.max(0, Math.min(W - 1, x));
+        y = Math.max(0, Math.min(H - 1, y));
+        var i, j;
+        if (FL) {
+            if (kind === 'e') {
+                selCancel();
+                sfx('undo');
+                return;
+            }
+            var ox = x - FL.dx, oy = y - FL.dy;
+            for (j = 0; j < FL.h; j++)
+                for (i = 0; i < FL.w; i++) {
+                    var v = FL.d[j * FL.w + i], gx = ox + i, gy = oy + j;
+                    if (v >= 0 && gx >= 0 && gy >= 0 && gx < W && gy < H)
+                        grid[gy * W + gx] = v;
+                }
+            SEL = { x0: Math.max(0, ox), y0: Math.max(0, oy), x1: Math.min(W - 1, ox + FL.w - 1), y1: Math.min(H - 1, oy + FL.h - 1), f: fi };
+            FL = null;
+            sfx('fill');
+            vib(12);
+            return;
+        }
+        var inSel = SEL && x >= SEL.x0 && x <= SEL.x1 && y >= SEL.y0 && y <= SEL.y1;
+        if (kind === 'e' && AS) {
+            AS = null;
+            sfx('undo');
+            return;
+        }
+        if (inSel && !AS) {
+            if (kind === 'e') {
+                snap();
+                for (j = SEL.y0; j <= SEL.y1; j++)
+                    for (i = SEL.x0; i <= SEL.x1; i++)
+                        grid[j * W + i] = -1;
+                sfx('erase');
+                vib(12);
+                return;
+            }
+            snap();
+            var w = SEL.x1 - SEL.x0 + 1, h = SEL.y1 - SEL.y0 + 1, d = [];
+            for (j = 0; j < h; j++)
+                for (i = 0; i < w; i++) {
+                    var k = (SEL.y0 + j) * W + SEL.x0 + i;
+                    d.push(grid[k]);
+                    grid[k] = -1;
+                }
+            FL = { w: w, h: h, d: d, dx: x - SEL.x0, dy: y - SEL.y0, f: fi };
+            sfx('pick');
+            vib(10);
+            return;
+        }
+        if (kind === 'e') {
+            SEL = null;
+            return;
+        }
+        if (!AS) {
+            AS = [x, y];
+            SEL = null;
+            sfx('pick');
+            vib(8);
+        }
+        else {
+            SEL = { x0: Math.min(AS[0], x), y0: Math.min(AS[1], y), x1: Math.max(AS[0], x), y1: Math.max(AS[1], y), f: fi };
+            AS = null;
+            sfx('fill');
+            vib(12);
+        }
+    }
     function toolAct(kind, x, y) {
+        if (AT === 6) {
+            selAct(kind, x, y);
+            draw();
+            return;
+        }
         if (AT === 1) {
             snap();
             floodFill(x, y, kind === 'e' ? -1 : sel);
@@ -757,7 +883,7 @@
         im.style.maxWidth = '100%';
         sfx('fill');
     };
-    function atLabel() { $('at').textContent = t(['at_pen', 'at_fill', 'at_pick', 'at_line', 'at_rect', 'at_rectf'][AT]); $('at').className = AT ? 'on' : ''; }
+    function atLabel() { $('at').textContent = t(['at_pen', 'at_fill', 'at_pick', 'at_line', 'at_rect', 'at_rectf', 'at_select'][AT]); $('at').className = AT ? 'on' : ''; }
     function line(x0, y0, x1, y1, erase) {
         var dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, e = dx - dy, n = 0;
         while (n++ < 200) {
@@ -1025,7 +1151,7 @@
         libb: "<path d='M3 6h6l2 2h10v11H3z'/>", gear: "<circle cx='12' cy='12' r='3.5'/><path d='M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2'/>",
         rot: "<path d='M20 12a8 8 0 11-3-6.2M20 4v5h-5'/>", mm: "<path d='M5 3v15l4-4 3 6 3-1-3-6h6z'/>", exm: "<path d='M12 3v12M7 10l5 5 5-5M4 20h16'/>",
         touch: "<path d='M9 11V5a2 2 0 014 0v6M13 11a2 2 0 014 0v3a6 6 0 01-6 6h-1a5 5 0 01-4-2l-2-4a2 2 0 013-1l1 1'/>",
-        swap: "<path d='M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4'/>", pie: "<circle cx='12' cy='12' r='9'/><path d='M12 3v9l6 6M12 12L5 17'/>", prec: "<circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='1.5'/><path d='M12 2v4M12 18v4M2 12h4M18 12h4'/>", sym: "<path d='M12 3v18' stroke-dasharray='2 2'/><path d='M8 7L4 12l4 5zM16 7l4 5-4 5z'/>", line: "<path d='M4 20L20 4'/><circle cx='4' cy='20' r='1.5'/><circle cx='20' cy='4' r='1.5'/>", rect: "<rect x='4' y='6' width='16' height='12'/>", rectf: "<rect x='4' y='6' width='16' height='12' fill='black'/>", dot: "<rect x='8' y='8' width='8' height='8' fill='black'/><path d='M4 4h2M18 4h2M4 20h2M18 20h2'/>", pen: "<path d='M4 20l1-5L16 4l4 4L9 19zM14 6l4 4'/>", eraser: "<path d='M4 16l9-10 7 7-6 6H8zM9 11l7 7'/>",
+        swap: "<path d='M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4'/>", pie: "<circle cx='12' cy='12' r='9'/><path d='M12 3v9l6 6M12 12L5 17'/>", prec: "<circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='1.5'/><path d='M12 2v4M12 18v4M2 12h4M18 12h4'/>", sym: "<path d='M12 3v18' stroke-dasharray='2 2'/><path d='M8 7L4 12l4 5zM16 7l4 5-4 5z'/>", line: "<path d='M4 20L20 4'/><circle cx='4' cy='20' r='1.5'/><circle cx='20' cy='4' r='1.5'/>", rect: "<rect x='4' y='6' width='16' height='12'/>", rectf: "<rect x='4' y='6' width='16' height='12' fill='black'/>", select: "<rect x='4' y='5' width='12' height='11' stroke-dasharray='3 3'/><path d='M14 14l6 6M20 14v6h-6'/>", dot: "<rect x='8' y='8' width='8' height='8' fill='black'/><path d='M4 4h2M18 4h2M4 20h2M18 20h2'/>", pen: "<path d='M4 20l1-5L16 4l4 4L9 19zM14 6l4 4'/>", eraser: "<path d='M4 16l9-10 7 7-6 6H8zM9 11l7 7'/>",
         fill: "<path d='M5 11l7-7 7 7-7 7zM19 15c1 2 2 3 2 4a2 2 0 01-4 0c0-1 1-2 2-4'/>", pick: "<path d='M14 4l6 6-3 1-8 8H5v-4l8-8zM13 7l4 4'/>"
     };
     function setIc(id, name) { var el = $(id); if (!el)
@@ -1068,7 +1194,7 @@
         tb.id = 'tools';
         tb.className = 'row';
         $('bar').parentNode.insertBefore(tb, $('bar').nextSibling);
-        ['dot', 'fill', 'pick', 'line', 'rect', 'rectf'].forEach(function (nm, i) { var b = document.createElement('button'); b.id = 'tl' + i; b.setAttribute('aria-label', nm); b.onclick = function () { AT = i; AS = null; atLabel(); draw(); }; tb.appendChild(b); setIc('tl' + i, nm); });
+        ['dot', 'fill', 'pick', 'line', 'rect', 'rectf', 'select'].forEach(function (nm, i) { var b = document.createElement('button'); b.id = 'tl' + i; b.setAttribute('aria-label', nm); b.onclick = function () { AT = i; AS = null; atLabel(); draw(); }; tb.appendChild(b); setIc('tl' + i, nm); });
         var sb = document.createElement('button');
         sb.id = 'symB';
         sb.setAttribute('aria-label', 'sym');
@@ -1136,7 +1262,7 @@
     initLayout();
     setTimeout(initTabs, 0);
     var ICK = ['undo', 'redo', 'clear', 'fAdd', 'fCopy', 'fDel', 'fPrev', 'fNext', 'flip', 'onion', 'gear', 'play', 'tool', 'at'];
-    function icState() { ICK.forEach(function (k) { $(k).classList.add('ic'); }); setIc('play', playing ? 'stop' : 'play'); setIc('tool', touchErase ? 'eraser' : 'pen'); setIc('at', ['dot', 'fill', 'pick', 'line', 'rect', 'rectf'][AT]); }
+    function icState() { ICK.forEach(function (k) { $(k).classList.add('ic'); }); setIc('play', playing ? 'stop' : 'play'); setIc('tool', touchErase ? 'eraser' : 'pen'); setIc('at', ['dot', 'fill', 'pick', 'line', 'rect', 'rectf', 'select'][AT]); }
     function icTools() { $('swapB').classList.add('ic'); $('pieB').classList.add('ic'); $('precB').classList.add('ic'); $('precB').classList.toggle('on', PREC); $('pieB').classList.toggle('on', pieOpen); var sbb = $('symB'); sbb.classList.add('ic'); sbb.classList.toggle('on', SYM > 0); for (var i = 0; i < 6; i++) {
         var b = $('tl' + i);
         b.classList.add('ic');
@@ -1689,8 +1815,8 @@
     })();
     /* لا يختفي المؤشر ولا العصا خارج الشاشة */
     function keepOn() {
-        ptx = Math.max(0, Math.min(VW() - 2, ptx));
-        pty = Math.max(0, Math.min(VH() - 2, pty));
+        ptx = Math.max(0, Math.min(VW() - 25, ptx));
+        pty = Math.max(0, Math.min(VH() - 30, pty));
         ptrShow();
         var r = joy.getBoundingClientRect();
         if (r.right < 30 || r.bottom < 30 || r.left > window.innerWidth - 30 || r.top > window.innerHeight - 30) {
@@ -1743,8 +1869,8 @@
         }
         if (MM && mag > 0.07 && !pieOpen) {
             var spp = SPD * 48 * Math.pow((mag - 0.07) / 0.93, 1.6) / mag * (pOver ? 0.4 : 1) * (PREC ? 0.35 : 1);
-            ptx = Math.max(0, Math.min(VW() - 2, ptx + jx * spp * dt));
-            pty = Math.max(0, Math.min(VH() - 2, pty + jy * spp * dt));
+            ptx = Math.max(0, Math.min(VW() - 25, ptx + jx * spp * dt));
+            pty = Math.max(0, Math.min(VH() - 30, pty + jy * spp * dt));
             ptrShow();
             if (pdrag)
                 pdrag.g._place(ptx - pdrag.ox, pty - pdrag.oy);
@@ -1825,7 +1951,12 @@
         colOpen(false);
     } });
     /* الأدوات */
-    $('undo').onclick = function () { if (undo.length) {
+    $('undo').onclick = function () { if (FL) {
+        selCancel();
+        draw();
+        sfx('undo');
+        return;
+    } if (undo.length) {
         var u = undo.pop();
         if (u.f < frames.length) {
             redoS.push({ f: u.f, g: frames[u.f].slice() });
@@ -1849,7 +1980,7 @@
             sfx('redo');
         }
     } };
-    $('at').onclick = function () { AT = (AT + 1) % 6; AS = null; atLabel(); draw(); };
+    $('at').onclick = function () { AT = (AT + 1) % 7; AS = null; atLabel(); draw(); };
     function togLabels() { $('tSnd').textContent = t('sound') + ': ' + t(SND ? 'on' : 'off'); $('tVib').textContent = t('vib') + ': ' + t(VIB ? 'on' : 'off'); $('tGrid').textContent = t('grid') + ': ' + t(GRIDON ? 'on' : 'off'); $('tSnd').className = SND ? 'on' : ''; $('tVib').className = VIB ? 'on' : ''; $('tGrid').className = GRIDON ? 'on' : ''; }
     $('tSnd').onclick = function () { SND = !SND; store('snd', SND ? 1 : 0); togLabels(); };
     $('tVib').onclick = function () { VIB = !VIB; store('vib', VIB ? 1 : 0); togLabels(); vib(30); };
@@ -1958,9 +2089,9 @@
     /* اللغات: العربية، الإنجليزية، الكردية البادينية (بالحرف العربي) */
     var LANG = 'ar';
     var TR = {
-        ar: { undo: 'تراجع', clear: 'مسح', touch: 'لمس', draw: 'رسم', erase: 'مسح', rot: 'دوّر', gear: 'إعدادات', fCopy: 'نسخ', fDel: 'حذف', fPrev: 'قبل', fNext: 'بعد', flip: 'قلب', onion: 'ظل', play: 'تشغيل', stop: 'إيقاف', auto: 'رسم تلقائي', on: 'تشغيل', off: 'إيقاف', bA: 'ارسم', bB: 'امسح', t_newc: 'لون جديد', exm: 'تصدير', t_exm: 'تصدير', bclose: 'إغلاق', mm: 'مؤشر', libb: 'المكتبة', t_lib: 'المكتبة', lclose: 'إغلاق', lsave: 'حفظ', lnew: 'رسمة جديدة', lopen: 'فتح', ldel: 'حذف', lph: 'اسم الرسمة', lnm: 'رسمة', lauto: 'آخر عمل (تلقائي)', lempty: 'لا توجد رسومات محفوظة بعد.', sheet: 'ورقة PNG للعبة', pal32: 'ألوان اللعبة (32)', redo: 'إعادة', at_pen: 'قلم', at_fill: 'تعبئة', at_pick: 'قطارة', at_line: 'خط', at_rect: 'مستطيل', at_rectf: 'مستطيل ممتلئ', sound: 'صوت', vib: 'اهتزاز', grid: 'شبكة', t_col: 'الألوان', cclose: 'إغلاق', t_set: 'الإعدادات', gclose: 'إغلاق', thLight: 'نهاري', thDark: 'داكن', t_lang: 'اللغة', t_cur: 'شكل المؤشر', o_box: 'مربع', o_arrow: 'سهم', joyReset: 'إعادة مكان العصا', t_hint: 'لتحريك العصا: اضغط عليها دون تحريك ثلاث ثوانٍ ثم اسحبها.', panReset: 'إعادة ترتيب القوائم', tt_col: 'الألوان', tt_anim: 'الأنيميشن', expng: 'صورة (احفظها بالضغط المطول)', t_mir: 'اليد اليسرى: القاعدة على الجانب الآخر', t_pp: 'تنظيف الخط تلقائياً (قد يحذف بكسلات)', t_dp: 'أسهم بدل العصا', t_hide: 'إخفاء العصا والمؤشر عند عدم الاستعمال', t_fps: 'سرعة الأنيميشن', t_bg: 'لون الرسم', t_spd: 'سرعة العصا', t_usz: 'حجم العصا والأزرار', exp: 'تصدير كنص', cp: 'نسخ النص', imp: 'استيراد من النص', t_note: '«.» شفاف، وكل حرف آخر لون من القائمة في آخر النص.', ph: 'هنا يظهر النص عند التصدير. للاستيراد الصق النص هنا واضغط استيراد.' },
-        en: { undo: 'Undo', clear: 'Clear', touch: 'Touch', draw: 'Draw', erase: 'Erase', rot: 'Rotate', gear: 'Settings', fCopy: 'Copy', fDel: 'Delete', fPrev: 'Back', fNext: 'Next', flip: 'Flip', onion: 'Onion', play: 'Play', stop: 'Stop', auto: 'Auto draw', on: 'On', off: 'Off', bA: 'Draw', bB: 'Erase', t_newc: 'New color', exm: 'Export', t_exm: 'Export', bclose: 'Close', mm: 'Pointer', libb: 'Library', t_lib: 'Library', lclose: 'Close', lsave: 'Save', lnew: 'New drawing', lopen: 'Open', ldel: 'Delete', lph: 'Drawing name', lnm: 'Drawing', lauto: 'Last work (auto)', lempty: 'No saved drawings yet.', sheet: 'PNG sheet for the game', pal32: 'Game colors (32)', redo: 'Redo', at_pen: 'Pen', at_fill: 'Fill', at_pick: 'Picker', at_line: 'Line', at_rect: 'Rectangle', at_rectf: 'Filled rectangle', sound: 'Sound', vib: 'Vibration', grid: 'Grid', t_col: 'Colors', cclose: 'Close', t_set: 'Settings', gclose: 'Close', thLight: 'Light', thDark: 'Dark', t_lang: 'Language', t_cur: 'Cursor shape', o_box: 'Square', o_arrow: 'Arrow', joyReset: 'Reset joystick position', t_hint: 'To move the joystick: press and hold it still for three seconds, then drag.', panReset: 'Reset menu layout', tt_col: 'Colors', tt_anim: 'Animation', expng: 'Image (long-press to save)', t_mir: 'Left-handed: base on the other side', t_pp: 'Auto line cleanup (may remove pixels)', t_dp: 'Arrows instead of joystick', t_hide: 'Hide joystick and pointer when idle', t_fps: 'Animation speed', t_bg: 'Canvas color', t_spd: 'Joystick speed', t_usz: 'Joystick and button size', exp: 'Export as text', cp: 'Copy text', imp: 'Import from text', t_note: '"." is transparent; every other letter is a color from the list at the end.', ph: 'The text appears here on export. To import, paste the text here and press Import.' },
-        ku: { undo: 'پاشڤە', clear: 'هەمی ژێببە', touch: 'دەست', draw: 'بکێشە', erase: 'ژێببە', rot: 'ڤەگێڕە', gear: 'ڕێکخستن', fCopy: 'کوپی', fDel: 'ژێببە', fPrev: 'بەری', fNext: 'پاشی', flip: 'ئاڤەژە', onion: 'سێبەر', play: 'لێبدە', stop: 'ڕاوەستە', auto: 'کێشانا خۆکار', on: 'کارا', off: 'ناکارا', bA: 'بکێشە', bB: 'ژێببە', t_newc: 'ڕەنگێ نوی', exm: 'دەرهێنان', t_exm: 'دەرهێنان', bclose: 'دابخە', mm: 'نیشاندەر', libb: 'کتێبخانە', t_lib: 'کتێبخانە', lclose: 'دابخە', lsave: 'تۆمار بکە', lnew: 'ڕەسمەکێ نوی', lopen: 'ڤەکە', ldel: 'ژێببە', lph: 'ناڤێ ڕەسمێ', lnm: 'ڕەسم', lauto: 'کارێ دوماهیێ (خۆکار)', lempty: 'هێشتا ڕەسمەک نەهاتیە تۆمارکرن.', sheet: 'وەرەقا PNG بۆ یارییێ', pal32: 'ڕەنگێن یارییێ (32)', redo: 'دووبارە', at_pen: 'پێنووس', at_fill: 'پڕکرن', at_pick: 'ڕەنگ هەلگرە', at_line: 'هێل', at_rect: 'چوارگۆشە', at_rectf: 'چوارگۆشا پڕ', sound: 'دەنگ', vib: 'لەرزین', grid: 'تۆر', t_col: 'ڕەنگ', cclose: 'دابخە', t_set: 'ڕێکخستن', gclose: 'دابخە', thLight: 'ڕووناک', thDark: 'تاری', t_lang: 'زمان', t_cur: 'شێوا نیشاندەری', o_box: 'چوارگۆشە', o_arrow: 'تیر', joyReset: 'جۆیستیکێ بگەڕێنە جهێ خۆ', t_hint: 'بۆ هەژاندنا جۆیستیکێ: سێ چرکەیان پێوە بگرە بێی هەژاندن و پاشی ڕاکێشە.', panReset: 'ڕێکخستنا لیستان ڤەگەڕینە', tt_col: 'ڕەنگ', tt_anim: 'ئەنیمەیشن', expng: 'وێنە (دریژ بگرە بۆ تۆمارکرنێ)', t_mir: 'ل ڕاست و چەپێ ڤەگەڕینە', t_pp: 'پیکسێلا تەمام (هێلان پاقژ دکەت)', t_dp: 'تیر ل جهێ جۆیستیکێ', t_hide: 'جۆیستیک و نیشاندەر بشێرە ئەگەر بکار نەهاتین', t_fps: 'خێرایا ئەنیمەیشنێ', t_bg: 'ڕەنگێ کێشانێ', t_spd: 'خێرایا جۆیستیکێ', t_usz: 'مەزناهیا جۆیستیک و دوگمەیان', exp: 'دەرهێنان وەک تێکست', cp: 'کوپیکرنا تێکستێ', imp: 'هێنان ژ تێکستێ', t_note: '«.» شەفافە، و هەر پیتەکێ دی ڕەنگەکە ژ لیستا ل دوماهیێ.', ph: 'تێکست ل ڤێرە دیار دبیت دەمێ دەردهێنی. بۆ هێنانێ، تێکستێ ل ڤێرە بنڤێسە و هێنان بکە.' }
+        ar: { undo: 'تراجع', clear: 'مسح', touch: 'لمس', draw: 'رسم', erase: 'مسح', rot: 'دوّر', gear: 'إعدادات', fCopy: 'نسخ', fDel: 'حذف', fPrev: 'قبل', fNext: 'بعد', flip: 'قلب', onion: 'ظل', play: 'تشغيل', stop: 'إيقاف', auto: 'رسم تلقائي', on: 'تشغيل', off: 'إيقاف', bA: 'ارسم', bB: 'امسح', t_newc: 'لون جديد', exm: 'تصدير', t_exm: 'تصدير', bclose: 'إغلاق', mm: 'مؤشر', libb: 'المكتبة', t_lib: 'المكتبة', lclose: 'إغلاق', lsave: 'حفظ', lnew: 'رسمة جديدة', lopen: 'فتح', ldel: 'حذف', lph: 'اسم الرسمة', lnm: 'رسمة', lauto: 'آخر عمل (تلقائي)', lempty: 'لا توجد رسومات محفوظة بعد.', sheet: 'ورقة PNG للعبة', pal32: 'ألوان اللعبة (32)', redo: 'إعادة', at_pen: 'قلم', at_fill: 'تعبئة', at_pick: 'قطارة', at_line: 'خط', at_rect: 'مستطيل', at_rectf: 'مستطيل ممتلئ', at_select: 'تحديد ونقل', sound: 'صوت', vib: 'اهتزاز', grid: 'شبكة', t_col: 'الألوان', cclose: 'إغلاق', t_set: 'الإعدادات', gclose: 'إغلاق', thLight: 'نهاري', thDark: 'داكن', t_lang: 'اللغة', t_cur: 'شكل المؤشر', o_box: 'مربع', o_arrow: 'سهم', joyReset: 'إعادة مكان العصا', t_hint: 'لتحريك العصا: اضغط عليها دون تحريك ثلاث ثوانٍ ثم اسحبها.', panReset: 'إعادة ترتيب القوائم', tt_col: 'الألوان', tt_anim: 'الأنيميشن', expng: 'صورة (احفظها بالضغط المطول)', t_mir: 'اليد اليسرى: القاعدة على الجانب الآخر', t_pp: 'تنظيف الخط تلقائياً (قد يحذف بكسلات)', t_dp: 'أسهم بدل العصا', t_hide: 'إخفاء العصا والمؤشر عند عدم الاستعمال', t_fps: 'سرعة الأنيميشن', t_bg: 'لون الرسم', t_spd: 'سرعة العصا', t_usz: 'حجم العصا والأزرار', exp: 'تصدير كنص', cp: 'نسخ النص', imp: 'استيراد من النص', t_note: '«.» شفاف، وكل حرف آخر لون من القائمة في آخر النص.', ph: 'هنا يظهر النص عند التصدير. للاستيراد الصق النص هنا واضغط استيراد.' },
+        en: { undo: 'Undo', clear: 'Clear', touch: 'Touch', draw: 'Draw', erase: 'Erase', rot: 'Rotate', gear: 'Settings', fCopy: 'Copy', fDel: 'Delete', fPrev: 'Back', fNext: 'Next', flip: 'Flip', onion: 'Onion', play: 'Play', stop: 'Stop', auto: 'Auto draw', on: 'On', off: 'Off', bA: 'Draw', bB: 'Erase', t_newc: 'New color', exm: 'Export', t_exm: 'Export', bclose: 'Close', mm: 'Pointer', libb: 'Library', t_lib: 'Library', lclose: 'Close', lsave: 'Save', lnew: 'New drawing', lopen: 'Open', ldel: 'Delete', lph: 'Drawing name', lnm: 'Drawing', lauto: 'Last work (auto)', lempty: 'No saved drawings yet.', sheet: 'PNG sheet for the game', pal32: 'Game colors (32)', redo: 'Redo', at_pen: 'Pen', at_fill: 'Fill', at_pick: 'Picker', at_line: 'Line', at_rect: 'Rectangle', at_rectf: 'Filled rectangle', at_select: 'Select & move', sound: 'Sound', vib: 'Vibration', grid: 'Grid', t_col: 'Colors', cclose: 'Close', t_set: 'Settings', gclose: 'Close', thLight: 'Light', thDark: 'Dark', t_lang: 'Language', t_cur: 'Cursor shape', o_box: 'Square', o_arrow: 'Arrow', joyReset: 'Reset joystick position', t_hint: 'To move the joystick: press and hold it still for three seconds, then drag.', panReset: 'Reset menu layout', tt_col: 'Colors', tt_anim: 'Animation', expng: 'Image (long-press to save)', t_mir: 'Left-handed: base on the other side', t_pp: 'Auto line cleanup (may remove pixels)', t_dp: 'Arrows instead of joystick', t_hide: 'Hide joystick and pointer when idle', t_fps: 'Animation speed', t_bg: 'Canvas color', t_spd: 'Joystick speed', t_usz: 'Joystick and button size', exp: 'Export as text', cp: 'Copy text', imp: 'Import from text', t_note: '"." is transparent; every other letter is a color from the list at the end.', ph: 'The text appears here on export. To import, paste the text here and press Import.' },
+        ku: { undo: 'پاشڤە', clear: 'هەمی ژێببە', touch: 'دەست', draw: 'بکێشە', erase: 'ژێببە', rot: 'ڤەگێڕە', gear: 'ڕێکخستن', fCopy: 'کوپی', fDel: 'ژێببە', fPrev: 'بەری', fNext: 'پاشی', flip: 'ئاڤەژە', onion: 'سێبەر', play: 'لێبدە', stop: 'ڕاوەستە', auto: 'کێشانا خۆکار', on: 'کارا', off: 'ناکارا', bA: 'بکێشە', bB: 'ژێببە', t_newc: 'ڕەنگێ نوی', exm: 'دەرهێنان', t_exm: 'دەرهێنان', bclose: 'دابخە', mm: 'نیشاندەر', libb: 'کتێبخانە', t_lib: 'کتێبخانە', lclose: 'دابخە', lsave: 'تۆمار بکە', lnew: 'ڕەسمەکێ نوی', lopen: 'ڤەکە', ldel: 'ژێببە', lph: 'ناڤێ ڕەسمێ', lnm: 'ڕەسم', lauto: 'کارێ دوماهیێ (خۆکار)', lempty: 'هێشتا ڕەسمەک نەهاتیە تۆمارکرن.', sheet: 'وەرەقا PNG بۆ یارییێ', pal32: 'ڕەنگێن یارییێ (32)', redo: 'دووبارە', at_pen: 'پێنووس', at_fill: 'پڕکرن', at_pick: 'ڕەنگ هەلگرە', at_line: 'هێل', at_rect: 'چوارگۆشە', at_rectf: 'چوارگۆشا پڕ', at_select: 'هەلبژێرە', sound: 'دەنگ', vib: 'لەرزین', grid: 'تۆر', t_col: 'ڕەنگ', cclose: 'دابخە', t_set: 'ڕێکخستن', gclose: 'دابخە', thLight: 'ڕووناک', thDark: 'تاری', t_lang: 'زمان', t_cur: 'شێوا نیشاندەری', o_box: 'چوارگۆشە', o_arrow: 'تیر', joyReset: 'جۆیستیکێ بگەڕێنە جهێ خۆ', t_hint: 'بۆ هەژاندنا جۆیستیکێ: سێ چرکەیان پێوە بگرە بێی هەژاندن و پاشی ڕاکێشە.', panReset: 'ڕێکخستنا لیستان ڤەگەڕینە', tt_col: 'ڕەنگ', tt_anim: 'ئەنیمەیشن', expng: 'وێنە (دریژ بگرە بۆ تۆمارکرنێ)', t_mir: 'ل ڕاست و چەپێ ڤەگەڕینە', t_pp: 'پیکسێلا تەمام (هێلان پاقژ دکەت)', t_dp: 'تیر ل جهێ جۆیستیکێ', t_hide: 'جۆیستیک و نیشاندەر بشێرە ئەگەر بکار نەهاتین', t_fps: 'خێرایا ئەنیمەیشنێ', t_bg: 'ڕەنگێ کێشانێ', t_spd: 'خێرایا جۆیستیکێ', t_usz: 'مەزناهیا جۆیستیک و دوگمەیان', exp: 'دەرهێنان وەک تێکست', cp: 'کوپیکرنا تێکستێ', imp: 'هێنان ژ تێکستێ', t_note: '«.» شەفافە، و هەر پیتەکێ دی ڕەنگەکە ژ لیستا ل دوماهیێ.', ph: 'تێکست ل ڤێرە دیار دبیت دەمێ دەردهێنی. بۆ هێنانێ، تێکستێ ل ڤێرە بنڤێسە و هێنان بکە.' }
     };
     function t(k) { return (TR[LANG] && TR[LANG][k]) || TR.ar[k] || k; }
     function applyLang() {
@@ -2083,7 +2214,28 @@
         e.preventDefault();
         draw();
     });
-    window.addEventListener('resize', function () { fit(); draw(); });
+    /* شبكة أمان: عند أي خطأ نحفظ الرسمة ونعرض رسالة صغيرة بدل أن يتوقف كل شيء */
+    var errShown = false;
+    window.addEventListener('error', function () {
+        try {
+            localStorage.setItem('pxa_proj', JSON.stringify(projObj()));
+        }
+        catch (e) { }
+        if (errShown)
+            return;
+        errShown = true;
+        try {
+            var eb = document.createElement('div');
+            eb.textContent = 'حصل خطأ بسيط. رسمتك محفوظة. إذا توقف شيء، أعد فتح التطبيق. (اضغط لإخفاء)';
+            eb.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#3a1010;color:#fff;border:2px solid #e04a38;border-radius:12px;padding:8px 12px;font-size:14px;text-align:center';
+            eb.onclick = function () { eb.remove(); };
+            $('wrap').appendChild(eb);
+            setTimeout(function () { eb.remove(); }, 12000);
+        }
+        catch (e) { }
+    });
+    var rzT = 0;
+    window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { fit(); draw(); }, 180); });
     window.__app = { ptr: function (x, y) { ptx = x; pty = y; ptrShow(); }, grid: function () { return grid.slice(); }, text: toText };
     newGrid();
     pal();
