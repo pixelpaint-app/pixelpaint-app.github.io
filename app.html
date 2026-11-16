@@ -211,59 +211,19 @@
 <script>
 "use strict";
 (function () {
-    var SIZES = [
-        [16, 24],
-        [16, 25],
-        [16, 16],
-        [24, 24],
-        [32, 32],
-        [48, 48]
-    ];
-    var PAL = [
-        '#07060f',
-        '#0f1040',
-        '#f4f4ea',
-        '#5a2a2a',
-        '#8a6648',
-        '#3d7a3a',
-        '#6aa84f',
-        '#4aa8e8',
-        '#d8452e',
-        '#e8a23a'
-    ];
-    var COLS = 16, ROWS = 24, grid = [], frames = [], fi = 0, onion = false, playing = false, pi = 0, fps = 6, ptimer = null, sel = 0, curX = 7.5, curY = 11.5, undo = [], CELL = 12;
-    var $ = function (i) {
-        return document.getElementById(i);
-    };
-    var cv = $('cv'), ctx = cv.getContext('2d'), ORI = 'a', SPD = 9, CUR = 'arrow', AUTO = 0, autoOn = false, MM = true, ptx = 200, pty = 200, pOver = false, redoS = [], TOOL = 0, SND = true, VIB = true, GRIDON = true, AC = null, lastSfx = 0;
+    var SIZES = [[16, 24], [16, 25], [16, 16], [24, 24], [32, 32], [48, 48]];
+    var PAL = ['#07060f', '#0f1040', '#f4f4ea', '#5a2a2a', '#8a6648', '#3d7a3a', '#6aa84f', '#4aa8e8', '#d8452e', '#e8a23a'];
+    var W = 16, H = 24, grid = [], frames = [], fi = 0, onion = false, playing = false, pi = 0, fps = 6, ptimer = null, sel = 0, cx = 7.5, cy = 11.5, undo = [], cs = 12;
+    var $ = function (i) { return document.getElementById(i); };
+    var cv = $('cv'), ctx = cv.getContext('2d'), ORI = 'a', SPD = 9, CUR = 'arrow', AUTO = 0, autoOn = false, MM = true, ptx = 200, pty = 200, pOver = false, redoS = [], AT = 0, SND = true, VIB = true, GRIDON = true, AC = null, lastSfx = 0;
     var RO = false;
-    function physLand() {
-        return window.innerWidth > window.innerHeight;
-    }
-    function isLand() {
-        return ORI === 'l' || (ORI === 'a' && physLand());
-    }
-    function VW() {
-        return RO ? window.innerHeight : window.innerWidth;
-    }
-    function VH() {
-        return RO ? window.innerWidth : window.innerHeight;
-    }
-    function LP(e) {
-        return RO ? [e.clientY, window.innerWidth - e.clientX] : [e.clientX, e.clientY];
-    }
-    function lrect(el) {
-        var r = el.getBoundingClientRect();
-        if (!RO)
-            return { left: r.left, top: r.top, width: r.width, height: r.height };
-        var W0 = window.innerWidth, ax = r.top, ay = W0 - r.left, bx = r.bottom, by = W0 - r.right;
-        return {
-            left: Math.min(ax, bx),
-            top: Math.min(ay, by),
-            width: Math.abs(bx - ax),
-            height: Math.abs(by - ay)
-        };
-    }
+    function physLand() { return window.innerWidth > window.innerHeight; }
+    function isLand() { return ORI === 'l' || (ORI === 'a' && physLand()); }
+    function VW() { return RO ? window.innerHeight : window.innerWidth; }
+    function VH() { return RO ? window.innerWidth : window.innerHeight; }
+    function LP(e) { return RO ? [e.clientY, window.innerWidth - e.clientX] : [e.clientX, e.clientY]; }
+    function lrect(el) { var r = el.getBoundingClientRect(); if (!RO)
+        return { left: r.left, top: r.top, width: r.width, height: r.height }; var W0 = window.innerWidth, ax = r.top, ay = W0 - r.left, bx = r.bottom, by = W0 - r.right; return { left: Math.min(ax, bx), top: Math.min(ay, by), width: Math.abs(bx - ax), height: Math.abs(by - ay) }; }
     function applyRot() {
         var wantLand = ORI === 'l', wantPort = ORI === 'p';
         RO = (wantLand && !physLand()) || (wantPort && physLand());
@@ -280,59 +240,20 @@
             w.style.transform = '';
         }
     }
-    function applyLand() {
-        document.documentElement.classList.toggle('land', isLand());
-    }
-    function newGrid() {
-        grid = blankGrid();
-        frames = [grid];
-        fi = 0;
-        strip();
-    }
-    function snap() {
-        PP = [];
-        undo.push({ f: fi, g: grid.slice() });
-        if (undo.length > 80)
-            undo.shift();
-        redoS = [];
-    }
-    /* دوال صغيرة تمنع التكرار */
-    var EMPTY = -1; /* قيمة الخلية الفارغة (شفافة) */
-    function blankGrid() {
-        var g = [];
-        for (var i = 0; i < COLS * ROWS; i++)
-            g.push(EMPTY);
-        return g;
-    }
-    function inGrid(x, y) {
-        return x >= 0 && y >= 0 && x < COLS && y < ROWS;
-    }
-    function saveView() {
-        VWS[VCUR] = { frames: frames, fi: fi };
-    }
-    function knobHome() {
-        knob.style.transform = 'translate(0,0)';
-    }
-    function setSize(w, h) {
-        COLS = w;
-        ROWS = h;
-        newGrid();
-        undo = [];
-        curX = (COLS - 1) / 2;
-        curY = (ROWS - 1) / 2;
-        fit();
-        draw();
-    }
+    function applyLand() { document.documentElement.classList.toggle('land', isLand()); }
+    function newGrid() { grid = []; for (var i = 0; i < W * H; i++)
+        grid.push(-1); frames = [grid]; fi = 0; strip(); }
+    function snap() { PP = []; undo.push({ f: fi, g: grid.slice() }); if (undo.length > 80)
+        undo.shift(); redoS = []; }
+    function setSize(w, h) { W = w; H = h; newGrid(); undo = []; cx = (W - 1) / 2; cy = (H - 1) / 2; fit(); draw(); }
     var ZM = 1;
-    function sideW() {
-        try {
-            var c = getComputedStyle($('app')).gridTemplateColumns.split(' ').map(parseFloat);
-            return (c[0] || 0) + (c[c.length - 1] || 0);
-        }
-        catch (e) {
-            return 462;
-        }
+    function sideW() { try {
+        var c = getComputedStyle($('app')).gridTemplateColumns.split(' ').map(parseFloat);
+        return (c[0] || 0) + (c[c.length - 1] || 0);
     }
+    catch (e) {
+        return 462;
+    } }
     function fit() {
         applyRot();
         applyLand();
@@ -341,70 +262,63 @@
             mirApply();
         document.documentElement.style.setProperty('--u', String(((+$('usz').value || 100) / 100) * (isLand() ? Math.min(1, VH() / 460) : 1)));
         var land = isLand(), midW = $('app').clientWidth - (land ? sideW() + 40 : 20), availW = land ? midW : Math.min(midW, 520), availH = land ? Math.max(120, VH() - 40) : Math.max(220, VH() * 0.45);
-        CELL = Math.max(2, Math.floor(Math.min(availW / COLS, availH / ROWS) * ZM));
-        cv.width = COLS * CELL;
-        cv.height = ROWS * CELL;
+        cs = Math.max(2, Math.floor(Math.min(availW / W, availH / H) * ZM));
+        cv.width = W * cs;
+        cv.height = H * cs;
         cv.style.width = cv.width + 'px';
         cv.style.height = cv.height + 'px';
     }
-    var BGS = [
-        ['#bdb6c8', '#d6d0de'],
-        ['#c9d8c0', '#dbe7d3'],
-        ['#d9cfb8', '#e8e0cc'],
-        ['#3a3a42', '#44444d'],
-        ['#ffffff', '#ffffff'],
-        ['#101014', '#101014']
-    ], BGI = 0;
+    var BGS = [['#bdb6c8', '#d6d0de'], ['#c9d8c0', '#dbe7d3'], ['#d9cfb8', '#e8e0cc'], ['#3a3a42', '#44444d'], ['#ffffff', '#ffffff'], ['#101014', '#101014']], BGI = 0;
     try {
-        BGI = Math.min(BGS.length - 1, +(load('bg', null) || 0));
+        BGI = Math.min(BGS.length - 1, +(localStorage.getItem('pxa_bg') || 0));
     }
     catch (e) { }
     function draw() {
-        if ((SEL || FL) && (TOOL !== 6 || (FL && FL.f !== fi)))
+        if ((SEL || FL) && (AT !== 6 || (FL && FL.f !== fi)))
             selCancel();
-        if (SEL && (SEL.f !== fi || SEL.x1 >= COLS || SEL.y1 >= ROWS))
+        if (SEL && (SEL.f !== fi || SEL.x1 >= W || SEL.y1 >= H))
             SEL = null;
         var x, y, c, GR = playing ? frames[pi % frames.length] : grid;
-        for (y = 0; y < ROWS; y++)
-            for (x = 0; x < COLS; x++) {
-                c = GR[y * COLS + x];
-                ctx.fillStyle = (x + y) & 1 ? BGS[BGI][0] : BGS[BGI][1];
-                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+        for (y = 0; y < H; y++)
+            for (x = 0; x < W; x++) {
+                c = GR[y * W + x];
+                ctx.fillStyle = ((x + y) & 1) ? BGS[BGI][0] : BGS[BGI][1];
+                ctx.fillRect(x * cs, y * cs, cs, cs);
                 if (c < 0 && onion && fi > 0) {
-                    var pc = frames[fi - 1][y * COLS + x];
+                    var pc = frames[fi - 1][y * W + x];
                     if (pc >= 0) {
-                        ctx.globalAlpha = 0.32;
+                        ctx.globalAlpha = .32;
                         ctx.fillStyle = PAL[pc];
-                        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+                        ctx.fillRect(x * cs, y * cs, cs, cs);
                         ctx.globalAlpha = 1;
                     }
                 }
                 if (c >= 0) {
                     ctx.fillStyle = PAL[c];
-                    ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+                    ctx.fillRect(x * cs, y * cs, cs, cs);
                 }
             }
         if (REF && refOk) {
-            var rk = Math.min((COLS * CELL) / REF.width, (ROWS * CELL) / REF.height);
-            ctx.globalAlpha = 0.3;
+            var rk = Math.min(W * cs / REF.width, H * cs / REF.height);
+            ctx.globalAlpha = .3;
             ctx.drawImage(REF, 0, 0, REF.width * rk, REF.height * rk);
             ctx.globalAlpha = 1;
         }
         ctx.strokeStyle = GRIDON ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,0)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (x = 0; x <= COLS; x++) {
-            ctx.moveTo(x * CELL + 0.5, 0);
-            ctx.lineTo(x * CELL + 0.5, ROWS * CELL);
+        for (x = 0; x <= W; x++) {
+            ctx.moveTo(x * cs + .5, 0);
+            ctx.lineTo(x * cs + .5, H * cs);
         }
-        for (y = 0; y <= ROWS; y++) {
-            ctx.moveTo(0, y * CELL + 0.5);
-            ctx.lineTo(COLS * CELL, y * CELL + 0.5);
+        for (y = 0; y <= H; y++) {
+            ctx.moveTo(0, y * cs + .5);
+            ctx.lineTo(W * cs, y * cs + .5);
         }
         ctx.stroke();
         selDraw();
         fxDraw();
-        var mx = Math.round(curX), my = Math.round(curY), ax = curX * CELL + CELL / 2, ay = curY * CELL + CELL / 2;
+        var mx = Math.round(cx), my = Math.round(cy), ax = cx * cs + cs / 2, ay = cy * cs + cs / 2;
         if (SYM) {
             ctx.save();
             ctx.strokeStyle = 'rgba(47,158,87,.9)';
@@ -412,52 +326,51 @@
             ctx.setLineDash([6, 5]);
             ctx.beginPath();
             if (SYM === 1 || SYM === 3) {
-                ctx.moveTo((CELL * COLS) / 2, 0);
-                ctx.lineTo((CELL * COLS) / 2, CELL * ROWS);
+                ctx.moveTo(cs * W / 2, 0);
+                ctx.lineTo(cs * W / 2, cs * H);
             }
             if (SYM === 2 || SYM === 3) {
-                ctx.moveTo(0, (CELL * ROWS) / 2);
-                ctx.lineTo(CELL * COLS, (CELL * ROWS) / 2);
+                ctx.moveTo(0, cs * H / 2);
+                ctx.lineTo(cs * W, cs * H / 2);
             }
             ctx.stroke();
             ctx.restore();
         }
-        if (ANCHOR) {
+        if (AS) {
             ctx.lineWidth = 3;
             ctx.strokeStyle = '#fff';
-            ctx.strokeRect(ANCHOR[0] * CELL + 2, ANCHOR[1] * CELL + 2, CELL - 4, CELL - 4);
+            ctx.strokeRect(AS[0] * cs + 2, AS[1] * cs + 2, cs - 4, cs - 4);
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = '#e0401c';
-            ctx.strokeRect(ANCHOR[0] * CELL + 2, ANCHOR[1] * CELL + 2, CELL - 4, CELL - 4);
+            ctx.strokeRect(AS[0] * cs + 2, AS[1] * cs + 2, cs - 4, cs - 4);
         }
         if (!MM || pOver) {
             ctx.lineWidth = 3;
             ctx.strokeStyle = '#000';
-            ctx.strokeRect(mx * CELL + 1, my * CELL + 1, CELL - 2, CELL - 2);
+            ctx.strokeRect(mx * cs + 1, my * cs + 1, cs - 2, cs - 2);
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = '#ffe14a';
-            ctx.strokeRect(mx * CELL + 1, my * CELL + 1, CELL - 2, CELL - 2);
+            ctx.strokeRect(mx * cs + 1, my * cs + 1, cs - 2, cs - 2);
         }
-        if (MM) {
-        }
+        if (MM) { }
         else if (CUR === 'box') {
             ctx.lineWidth = 4;
             ctx.strokeStyle = '#000';
-            ctx.strokeRect(mx * CELL + 1, my * CELL + 1, CELL - 2, CELL - 2);
+            ctx.strokeRect(mx * cs + 1, my * cs + 1, cs - 2, cs - 2);
             ctx.lineWidth = 2;
             ctx.strokeStyle = '#ffe14a';
-            ctx.strokeRect(mx * CELL + 1, my * CELL + 1, CELL - 2, CELL - 2);
+            ctx.strokeRect(mx * cs + 1, my * cs + 1, cs - 2, cs - 2);
             ctx.lineWidth = 1;
             ctx.strokeStyle = 'rgba(255,225,74,.55)';
             ctx.beginPath();
-            ctx.moveTo(0, my * CELL + CELL / 2 + 0.5);
-            ctx.lineTo(COLS * CELL, my * CELL + CELL / 2 + 0.5);
-            ctx.moveTo(mx * CELL + CELL / 2 + 0.5, 0);
-            ctx.lineTo(mx * CELL + CELL / 2 + 0.5, ROWS * CELL);
+            ctx.moveTo(0, my * cs + cs / 2 + .5);
+            ctx.lineTo(W * cs, my * cs + cs / 2 + .5);
+            ctx.moveTo(mx * cs + cs / 2 + .5, 0);
+            ctx.lineTo(mx * cs + cs / 2 + .5, H * cs);
             ctx.stroke();
         }
         else {
-            var k = Math.max(1.25, Math.min(2.2, CELL / 9));
+            var k = Math.max(1.25, Math.min(2.2, cs / 9));
             ctx.save();
             ctx.translate(ax, ay);
             ctx.scale(k, k);
@@ -486,20 +399,16 @@
         prev();
     }
     function prev() {
-        [
-            ['p1', 1],
-            ['p2', 2],
-            ['p4', 4]
-        ].forEach(function (a) {
+        [['p1', 1], ['p2', 2], ['p4', 4]].forEach(function (a) {
             var c = $(a[0]), g = c.getContext('2d'), k = a[1];
-            c.width = COLS * k;
-            c.height = ROWS * k;
-            c.style.width = COLS * k + 'px';
-            c.style.height = ROWS * k + 'px';
+            c.width = W * k;
+            c.height = H * k;
+            c.style.width = W * k + 'px';
+            c.style.height = H * k + 'px';
             var G = frames[playing ? pi : fi];
-            for (var y = 0; y < ROWS; y++)
-                for (var x = 0; x < COLS; x++) {
-                    var v = G[y * COLS + x];
+            for (var y = 0; y < H; y++)
+                for (var x = 0; x < W; x++) {
+                    var v = G[y * W + x];
                     if (v >= 0) {
                         g.fillStyle = PAL[v];
                         g.fillRect(x * k, y * k, k, k);
@@ -509,68 +418,46 @@
     }
     var PP = [], PIXP = false, SYM = 0, pieOpen = false, pieIdx = -1, pieT = 0, PREC = false;
     try {
-        PIXP = load('pp', null) === '1';
-        SYM = +(load('sym', null) || 0);
+        PIXP = localStorage.getItem('pxa_pp') === '1';
+        SYM = +(localStorage.getItem('pxa_sym') || 0);
     }
     catch (e) { }
     var FX = [], fxOn = false;
-    function fxAdd(x, y, col) {
-        if (FX.length > 50)
-            return;
-        for (var k = 0; k < 3; k++)
-            FX.push({
-                x: x + 0.5,
-                y: y + 0.5,
-                vx: (Math.random() - 0.5) * 0.16,
-                vy: -Math.random() * 0.14 - 0.03,
-                l: 1,
-                c: col
-            });
-        if (!fxOn) {
-            fxOn = true;
-            requestAnimationFrame(fxLoop);
-        }
+    function fxAdd(x, y, col) { if (FX.length > 50)
+        return; for (var k = 0; k < 3; k++)
+        FX.push({ x: x + .5, y: y + .5, vx: (Math.random() - .5) * .16, vy: -Math.random() * .14 - .03, l: 1, c: col }); if (!fxOn) {
+        fxOn = true;
+        requestAnimationFrame(fxLoop);
+    } }
+    function fxLoop() { for (var i = FX.length - 1; i >= 0; i--) {
+        var f = FX[i];
+        f.x += f.vx;
+        f.y += f.vy;
+        f.vy += .006;
+        f.l -= .045;
+        if (f.l <= 0)
+            FX.splice(i, 1);
+    } draw(); if (FX.length)
+        requestAnimationFrame(fxLoop);
+    else
+        fxOn = false; }
+    function fxDraw() { for (var i = 0; i < FX.length; i++) {
+        var f = FX[i];
+        ctx.globalAlpha = Math.max(0, f.l);
+        ctx.fillStyle = f.c;
+        var z = Math.max(2, cs * .22);
+        ctx.fillRect(f.x * cs - z / 2, f.y * cs - z / 2, z, z);
+    } ctx.globalAlpha = 1; }
+    function put1(x, y, erase) { if (x < 0 || y < 0 || x >= W || y >= H)
+        return; grid[y * W + x] = erase ? -1 : sel; try {
+        fxAdd(x, y, erase ? '#9aa4b2' : PAL[sel]);
     }
-    function fxLoop() {
-        for (var i = FX.length - 1; i >= 0; i--) {
-            var f = FX[i];
-            f.x += f.vx;
-            f.y += f.vy;
-            f.vy += 0.006;
-            f.l -= 0.045;
-            if (f.l <= 0)
-                FX.splice(i, 1);
-        }
-        draw();
-        if (FX.length)
-            requestAnimationFrame(fxLoop);
-        else
-            fxOn = false;
-    }
-    function fxDraw() {
-        for (var i = 0; i < FX.length; i++) {
-            var f = FX[i];
-            ctx.globalAlpha = Math.max(0, f.l);
-            ctx.fillStyle = f.c;
-            var z = Math.max(2, CELL * 0.22);
-            ctx.fillRect(f.x * CELL - z / 2, f.y * CELL - z / 2, z, z);
-        }
-        ctx.globalAlpha = 1;
-    }
-    function put1(x, y, erase) {
-        if (!inGrid(x, y))
-            return;
-        grid[y * COLS + x] = erase ? EMPTY : sel;
-        try {
-            fxAdd(x, y, erase ? '#9aa4b2' : PAL[sel]);
-        }
-        catch (e) { }
-    }
+    catch (e) { } }
     function put(x, y, erase) {
-        if (!inGrid(x, y))
+        if (x < 0 || y < 0 || x >= W || y >= H)
             return;
-        var i = y * COLS + x, prev = grid[i], mx = COLS - 1 - x, my = ROWS - 1 - y;
-        grid[i] = erase ? EMPTY : sel;
+        var i = y * W + x, prev = grid[i], mx = W - 1 - x, my = H - 1 - y;
+        grid[i] = erase ? -1 : sel;
         sfx(erase ? 'erase' : 'draw');
         if (SYM === 1 || SYM === 3)
             put1(mx, y, erase);
@@ -578,7 +465,7 @@
             put1(x, my, erase);
         if (SYM === 3)
             put1(mx, my, erase);
-        if (PIXP && !TOOL && SYM === 0) {
+        if (PIXP && !AT && SYM === 0) {
             var n = PP.length;
             if (n && PP[n - 1].i === i)
                 return;
@@ -586,10 +473,7 @@
             n = PP.length;
             if (n >= 3) {
                 var a = PP[n - 3], b = PP[n - 2], c = PP[n - 1];
-                if (Math.abs(a.x - c.x) === 1 &&
-                    Math.abs(a.y - c.y) === 1 &&
-                    (b.x === a.x || b.y === a.y) &&
-                    (b.x === c.x || b.y === c.y)) {
+                if (Math.abs(a.x - c.x) === 1 && Math.abs(a.y - c.y) === 1 && (b.x === a.x || b.y === a.y) && (b.x === c.x || b.y === c.y)) {
                     grid[b.i] = b.prev;
                     PP.splice(n - 2, 1);
                 }
@@ -597,20 +481,17 @@
         }
     }
     /* ---- أصوات مصنّعة واهتزاز (من لعبة الباندا) ---- */
-    function initAC() {
-        if (!AC) {
-            try {
-                AC = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            catch (e) { }
+    function initAC() { if (!AC) {
+        try {
+            AC = new (window.AudioContext || window.webkitAudioContext)();
         }
-        if (AC && AC.state === 'suspended') {
-            try {
-                AC.resume();
-            }
-            catch (e) { }
+        catch (e) { }
+    } if (AC && AC.state === 'suspended') {
+        try {
+            AC.resume();
         }
-    }
+        catch (e) { }
+    } }
     function tone(f0, f1, dur, type, vol, delay) {
         if (!AC || !SND)
             return;
@@ -625,14 +506,11 @@
         o.start(tt);
         o.stop(tt + dur + 0.03);
     }
-    function vib(ms) {
-        if (!VIB)
-            return;
-        try {
-            navigator.vibrate && navigator.vibrate(ms);
-        }
-        catch (e) { }
+    function vib(ms) { if (!VIB)
+        return; try {
+        navigator.vibrate && navigator.vibrate(ms);
     }
+    catch (e) { } }
     function sfx(n) {
         var now = performance.now();
         if (n === 'draw' || n === 'erase') {
@@ -662,30 +540,27 @@
         }
     }
     document.addEventListener('pointerdown', initAC, true);
-    document.addEventListener('click', function (e) {
-        var b = e.target.closest && e.target.closest('button');
-        if (b && !b.closest('#bA') && b.id !== 'bA' && b.id !== 'bB') {
-            sfx('ui');
-            vib(8);
-        }
-    }, true);
+    document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button'); if (b && !b.closest('#bA') && b.id !== 'bA' && b.id !== 'bB') {
+        sfx('ui');
+        vib(8);
+    } }, true);
     /* ---- تعبئة وقطارة ---- */
     function floodFill(x, y, val) {
-        if (!inGrid(x, y))
+        if (x < 0 || y < 0 || x >= W || y >= H)
             return;
-        var tg = grid[y * COLS + x];
+        var tg = grid[y * W + x];
         if (tg === val)
             return;
         var st = [[x, y]], n = 0;
         while (st.length && n++ < 20000) {
             var p = st.pop(), px0 = p[0], py0 = p[1];
-            if (px0 < 0 || py0 < 0 || px0 >= COLS || py0 >= ROWS || grid[py0 * COLS + px0] !== tg)
+            if (px0 < 0 || py0 < 0 || px0 >= W || py0 >= H || grid[py0 * W + px0] !== tg)
                 continue;
-            grid[py0 * COLS + px0] = val;
+            grid[py0 * W + px0] = val;
             st.push([px0 + 1, py0], [px0 - 1, py0], [px0, py0 + 1], [px0, py0 - 1]);
         }
     }
-    var ANCHOR = null, SEL = null, FL = null;
+    var AS = null, SEL = null, FL = null;
     function selCancel() {
         if (FL) {
             var u = undo.pop();
@@ -697,34 +572,34 @@
             FL = null;
         }
         SEL = null;
-        ANCHOR = null;
+        AS = null;
     }
     function selDraw() {
-        if (TOOL !== 6)
+        if (AT !== 6)
             return;
         function box(x0, y0, x1, y1) {
             ctx.save();
             ctx.lineWidth = 3;
             ctx.setLineDash([]);
             ctx.strokeStyle = '#000';
-            ctx.strokeRect(x0 * CELL + 1.5, y0 * CELL + 1.5, (x1 - x0 + 1) * CELL - 3, (y1 - y0 + 1) * CELL - 3);
+            ctx.strokeRect(x0 * cs + 1.5, y0 * cs + 1.5, (x1 - x0 + 1) * cs - 3, (y1 - y0 + 1) * cs - 3);
             ctx.lineWidth = 1.5;
             ctx.setLineDash([6, 5]);
             ctx.lineDashOffset = -((performance.now() / 80) | 0) % 11;
             ctx.strokeStyle = '#fff';
-            ctx.strokeRect(x0 * CELL + 1.5, y0 * CELL + 1.5, (x1 - x0 + 1) * CELL - 3, (y1 - y0 + 1) * CELL - 3);
+            ctx.strokeRect(x0 * cs + 1.5, y0 * cs + 1.5, (x1 - x0 + 1) * cs - 3, (y1 - y0 + 1) * cs - 3);
             ctx.restore();
         }
         if (FL) {
-            var ox = Math.round(curX) - FL.dx, oy = Math.round(curY) - FL.dy;
+            var ox = Math.round(cx) - FL.dx, oy = Math.round(cy) - FL.dy;
             ctx.save();
-            ctx.globalAlpha = 0.85;
+            ctx.globalAlpha = .85;
             for (var j = 0; j < FL.h; j++)
                 for (var i = 0; i < FL.w; i++) {
                     var v = FL.d[j * FL.w + i];
                     if (v >= 0) {
                         ctx.fillStyle = PAL[v];
-                        ctx.fillRect((ox + i) * CELL, (oy + j) * CELL, CELL, CELL);
+                        ctx.fillRect((ox + i) * cs, (oy + j) * cs, cs, cs);
                     }
                 }
             ctx.restore();
@@ -734,8 +609,8 @@
             box(SEL.x0, SEL.y0, SEL.x1, SEL.y1);
     }
     function selAct(kind, x, y) {
-        x = Math.max(0, Math.min(COLS - 1, x));
-        y = Math.max(0, Math.min(ROWS - 1, y));
+        x = Math.max(0, Math.min(W - 1, x));
+        y = Math.max(0, Math.min(H - 1, y));
         var i, j;
         if (FL) {
             if (kind === 'e') {
@@ -747,33 +622,27 @@
             for (j = 0; j < FL.h; j++)
                 for (i = 0; i < FL.w; i++) {
                     var v = FL.d[j * FL.w + i], gx = ox + i, gy = oy + j;
-                    if (v >= 0 && gx >= 0 && gy >= 0 && gx < COLS && gy < ROWS)
-                        grid[gy * COLS + gx] = v;
+                    if (v >= 0 && gx >= 0 && gy >= 0 && gx < W && gy < H)
+                        grid[gy * W + gx] = v;
                 }
-            SEL = {
-                x0: Math.max(0, ox),
-                y0: Math.max(0, oy),
-                x1: Math.min(COLS - 1, ox + FL.w - 1),
-                y1: Math.min(ROWS - 1, oy + FL.h - 1),
-                f: fi
-            };
+            SEL = { x0: Math.max(0, ox), y0: Math.max(0, oy), x1: Math.min(W - 1, ox + FL.w - 1), y1: Math.min(H - 1, oy + FL.h - 1), f: fi };
             FL = null;
             sfx('fill');
             vib(12);
             return;
         }
         var inSel = SEL && x >= SEL.x0 && x <= SEL.x1 && y >= SEL.y0 && y <= SEL.y1;
-        if (kind === 'e' && ANCHOR) {
-            ANCHOR = null;
+        if (kind === 'e' && AS) {
+            AS = null;
             sfx('undo');
             return;
         }
-        if (inSel && !ANCHOR) {
+        if (inSel && !AS) {
             if (kind === 'e') {
                 snap();
                 for (j = SEL.y0; j <= SEL.y1; j++)
                     for (i = SEL.x0; i <= SEL.x1; i++)
-                        grid[j * COLS + i] = EMPTY;
+                        grid[j * W + i] = -1;
                 sfx('erase');
                 vib(12);
                 return;
@@ -782,9 +651,9 @@
             var w = SEL.x1 - SEL.x0 + 1, h = SEL.y1 - SEL.y0 + 1, d = [];
             for (j = 0; j < h; j++)
                 for (i = 0; i < w; i++) {
-                    var k = (SEL.y0 + j) * COLS + SEL.x0 + i;
+                    var k = (SEL.y0 + j) * W + SEL.x0 + i;
                     d.push(grid[k]);
-                    grid[k] = EMPTY;
+                    grid[k] = -1;
                 }
             FL = { w: w, h: h, d: d, dx: x - SEL.x0, dy: y - SEL.y0, f: fi };
             sfx('pick');
@@ -795,65 +664,59 @@
             SEL = null;
             return;
         }
-        if (!ANCHOR) {
-            ANCHOR = [x, y];
+        if (!AS) {
+            AS = [x, y];
             SEL = null;
             sfx('pick');
             vib(8);
         }
         else {
-            SEL = {
-                x0: Math.min(ANCHOR[0], x),
-                y0: Math.min(ANCHOR[1], y),
-                x1: Math.max(ANCHOR[0], x),
-                y1: Math.max(ANCHOR[1], y),
-                f: fi
-            };
-            ANCHOR = null;
+            SEL = { x0: Math.min(AS[0], x), y0: Math.min(AS[1], y), x1: Math.max(AS[0], x), y1: Math.max(AS[1], y), f: fi };
+            AS = null;
             sfx('fill');
             vib(12);
         }
     }
     function toolAct(kind, x, y) {
-        if (TOOL === 6) {
+        if (AT === 6) {
             selAct(kind, x, y);
             draw();
             return;
         }
-        if (TOOL === 1) {
+        if (AT === 1) {
             snap();
-            floodFill(x, y, kind === 'e' ? EMPTY : sel);
+            floodFill(x, y, kind === 'e' ? -1 : sel);
             sfx('fill');
             vib(14);
         }
-        else if (TOOL === 2) {
-            var v = grid[y * COLS + x];
+        else if (AT === 2) {
+            var v = grid[y * W + x];
             if (v >= 0) {
                 sel = v;
                 pal();
                 sfx('pick');
                 vib(10);
             }
-            TOOL = 0;
+            AT = 0;
             atLabel();
         }
-        else if (TOOL >= 3) {
-            if (!ANCHOR) {
-                ANCHOR = [x, y];
+        else if (AT >= 3) {
+            if (!AS) {
+                AS = [x, y];
                 sfx('pick');
                 vib(8);
             }
             else {
                 snap();
-                var a0 = ANCHOR, er = kind === 'e';
-                ANCHOR = null;
-                if (TOOL === 3)
+                var a0 = AS, er = kind === 'e';
+                AS = null;
+                if (AT === 3)
                     line(a0[0], a0[1], x, y, er);
                 else {
                     var xa = Math.min(a0[0], x), xb = Math.max(a0[0], x), ya = Math.min(a0[1], y), yb = Math.max(a0[1], y);
                     for (var yy = ya; yy <= yb; yy++)
                         for (var xx = xa; xx <= xb; xx++)
-                            if (TOOL === 5 || yy === ya || yy === yb || xx === xa || xx === xb)
+                            if (AT === 5 || yy === ya || yy === yb || xx === xa || xx === xb)
                                 put(xx, yy, er);
                 }
                 sfx('fill');
@@ -863,66 +726,23 @@
         draw();
     }
     /* ---- حفظ تلقائي + مكتبة + ربط اللعبة ---- */
-    var GAMEPAL = [
-        '#0f0a0a',
-        '#291015',
-        '#0a2718',
-        '#262929',
-        '#451f23',
-        '#0c4224',
-        '#432f34',
-        '#174d34',
-        '#5e2f31',
-        '#11632d',
-        '#304e4c',
-        '#1c643c',
-        '#237047',
-        '#3c6161',
-        '#1f863b',
-        '#257f51',
-        '#76574d',
-        '#457575',
-        '#328660',
-        '#35894e',
-        '#38986d',
-        '#518b8b',
-        '#39a552',
-        '#489c63',
-        '#669ca6',
-        '#4eb684',
-        '#50bc63',
-        '#5fb8a5',
-        '#70d677',
-        '#75cdbe',
-        '#88dfd5',
-        '#96f2e6'
-    ];
+    var GAMEPAL = ['#0f0a0a', '#291015', '#0a2718', '#262929', '#451f23', '#0c4224', '#432f34', '#174d34', '#5e2f31', '#11632d', '#304e4c', '#1c643c', '#237047', '#3c6161', '#1f863b', '#257f51', '#76574d', '#457575', '#328660', '#35894e', '#38986d', '#518b8b', '#39a552', '#489c63', '#669ca6', '#4eb684', '#50bc63', '#5fb8a5', '#70d677', '#75cdbe', '#88dfd5', '#96f2e6'];
     var VWS = {}, VCUR = 'side', REF = null, refOk = false;
-    function projObj() {
-        saveView();
-        return { W: COLS, H: ROWS, PAL: PAL, frames: frames, fi: fi, views: VWS, vcur: VCUR };
-    }
-    function syncSize() {
-        var idx = -1;
-        SIZES.forEach(function (z, i) {
-            if (z[0] === COLS && z[1] === ROWS)
-                idx = i;
-        });
-        if (idx < 0) {
-            SIZES.push([COLS, ROWS]);
-            var o = document.createElement('option');
-            o.value = String(SIZES.length - 1);
-            o.textContent = COLS + '×' + ROWS;
-            sz.appendChild(o);
-            idx = SIZES.length - 1;
-        }
-        sz.value = idx;
-    }
+    function projObj() { VWS[VCUR] = { frames: frames, fi: fi }; return { W: W, H: H, PAL: PAL, frames: frames, fi: fi, views: VWS, vcur: VCUR }; }
+    function syncSize() { var idx = -1; SIZES.forEach(function (z, i) { if (z[0] === W && z[1] === H)
+        idx = i; }); if (idx < 0) {
+        SIZES.push([W, H]);
+        var o = document.createElement('option');
+        o.value = String(SIZES.length - 1);
+        o.textContent = W + '×' + H;
+        sz.appendChild(o);
+        idx = SIZES.length - 1;
+    } sz.value = idx; }
     function loadProj(o) {
         if (!o || !o.frames || !o.frames.length)
             return;
-        COLS = o.W;
-        ROWS = o.H;
+        W = o.W;
+        H = o.H;
         PAL = o.PAL;
         frames = o.frames;
         fi = Math.min(o.fi || 0, frames.length - 1);
@@ -930,15 +750,15 @@
         VWS = o.views || {};
         VCUR = o.vcur || 'side';
         if (VWS[VCUR])
-            saveView();
+            VWS[VCUR] = { frames: frames, fi: fi };
         try {
             viewLabel();
         }
         catch (e) { }
         undo = [];
         redoS = [];
-        curX = (COLS - 1) / 2;
-        curY = (ROWS - 1) / 2;
+        cx = (W - 1) / 2;
+        cy = (H - 1) / 2;
         if (sel >= PAL.length)
             sel = 0;
         syncSize();
@@ -948,37 +768,28 @@
         draw();
     }
     var lastSave = '';
-    setInterval(function () {
-        var js = JSON.stringify(projObj());
-        if (js !== lastSave) {
-            lastSave = js;
-            store('proj', js);
-        }
-    }, 2000);
-    function libGet() {
+    setInterval(function () { var js = JSON.stringify(projObj()); if (js !== lastSave) {
+        lastSave = js;
         try {
-            return JSON.parse(load('lib', null) || '{}');
+            localStorage.setItem('pxa_proj', js);
         }
-        catch (e) {
-            return {};
-        }
+        catch (e) { }
+    } }, 2000);
+    function libGet() { try {
+        return JSON.parse(localStorage.getItem('pxa_lib') || '{}');
     }
-    function libSet(o) {
-        store('lib', JSON.stringify(o));
+    catch (e) {
+        return {};
+    } }
+    function libSet(o) { try {
+        localStorage.setItem('pxa_lib', JSON.stringify(o));
     }
-    function isEmpty() {
-        return frames.every(function (g) {
-            return g.every(function (v) {
-                return v < 0;
-            });
-        });
-    }
+    catch (e) { } }
+    function isEmpty() { return frames.every(function (g) { return g.every(function (v) { return v < 0; }); }); }
     function renderLib() {
         var box = $('llist');
         box.innerHTML = '';
-        var lib = libGet(), names = Object.keys(lib).sort(function (a, b) {
-            return (lib[b].ts || 0) - (lib[a].ts || 0);
-        });
+        var lib = libGet(), names = Object.keys(lib).sort(function (a, b) { return (lib[b].ts || 0) - (lib[a].ts || 0); });
         names.forEach(function (nm) {
             var it = lib[nm], row = document.createElement('div');
             row.className = 'litem box';
@@ -998,20 +809,10 @@
             sp.textContent = nm + ' · ' + it.W + '×' + it.H + ' · ' + it.frames.length;
             var bo = document.createElement('button');
             bo.textContent = t('lopen');
-            bo.onclick = function () {
-                loadProj(JSON.parse(JSON.stringify(it)));
-                libOpen(false);
-                sfx('frame');
-            };
+            bo.onclick = function () { loadProj(JSON.parse(JSON.stringify(it))); libOpen(false); sfx('frame'); };
             var bd = document.createElement('button');
             bd.textContent = t('ldel');
-            bd.onclick = function () {
-                var l2 = libGet();
-                delete l2[nm];
-                libSet(l2);
-                renderLib();
-                sfx('erase');
-            };
+            bd.onclick = function () { var l2 = libGet(); delete l2[nm]; libSet(l2); renderLib(); sfx('erase'); };
             row.appendChild(c);
             row.appendChild(sp);
             row.appendChild(bo);
@@ -1025,89 +826,51 @@
             box.appendChild(em);
         }
     }
-    function libOpen(o) {
-        $('lib').classList.toggle('open', o);
-        if (o) {
-            $('set').classList.remove('open');
-            $('bot').classList.remove('open');
-            $('colp').classList.remove('open');
-            renderLib();
-        }
-        $('bk').classList.toggle('open', o);
-        updModal();
-    }
-    $('libb').onclick = function () {
-        libOpen(true);
-    };
-    $('lclose').onclick = function () {
-        libOpen(false);
-    };
-    $('lsave').onclick = function () {
-        var lib = libGet(), nm = ($('lname').value || '').trim() || t('lnm') + ' ' + (Object.keys(lib).length + 1);
-        var o = JSON.parse(JSON.stringify(projObj()));
+    function libOpen(o) { $('lib').classList.toggle('open', o); if (o) {
+        $('set').classList.remove('open');
+        $('bot').classList.remove('open');
+        $('colp').classList.remove('open');
+        renderLib();
+    } $('bk').classList.toggle('open', o); updModal(); }
+    $('libb').onclick = function () { libOpen(true); };
+    $('lclose').onclick = function () { libOpen(false); };
+    $('lsave').onclick = function () { var lib = libGet(), nm = ($('lname').value || '').trim() || (t('lnm') + ' ' + (Object.keys(lib).length + 1)); var o = JSON.parse(JSON.stringify(projObj())); o.ts = Date.now(); lib[nm] = o; libSet(lib); $('lname').value = ''; renderLib(); sfx('fill'); vib(14); };
+    $('lnew').onclick = function () { if (!isEmpty()) {
+        var lib = libGet(), o = JSON.parse(JSON.stringify(projObj()));
         o.ts = Date.now();
-        lib[nm] = o;
+        lib[t('lauto')] = o;
         libSet(lib);
-        $('lname').value = '';
-        renderLib();
-        sfx('fill');
-        vib(14);
-    };
-    $('lnew').onclick = function () {
-        if (!isEmpty()) {
-            var lib = libGet(), o = JSON.parse(JSON.stringify(projObj()));
-            o.ts = Date.now();
-            lib[t('lauto')] = o;
-            libSet(lib);
-        }
-        var keepPal = PAL.slice();
-        newGrid();
-        PAL = keepPal;
-        syncSize();
-        pal();
-        fit();
-        draw();
-        renderLib();
-        sfx('frame');
-    };
-    $('pal32').onclick = function () {
-        GAMEPAL.forEach(function (c) {
-            if (PAL.indexOf(c) < 0 && PAL.length < 52)
-                PAL.push(c);
-        });
-        pal();
-        sfx('fill');
-    };
+    } var keepPal = PAL.slice(); newGrid(); PAL = keepPal; syncSize(); pal(); fit(); draw(); renderLib(); sfx('frame'); };
+    $('pal32').onclick = function () { GAMEPAL.forEach(function (c) { if (PAL.indexOf(c) < 0 && PAL.length < 52)
+        PAL.push(c); }); pal(); sfx('fill'); };
     $('sheet').onclick = function () {
         var n = frames.length, c = document.createElement('canvas');
-        c.width = COLS * n;
-        c.height = ROWS;
+        c.width = W * n;
+        c.height = H;
         var g2 = c.getContext('2d');
-        frames.forEach(function (G, f) {
-            for (var y = 0; y < ROWS; y++)
-                for (var x = 0; x < COLS; x++) {
-                    var v = G[y * COLS + x];
-                    if (v >= 0) {
-                        g2.fillStyle = PAL[v];
-                        g2.fillRect(f * COLS + x, y, 1, 1);
-                    }
+        frames.forEach(function (G, f) { for (var y = 0; y < H; y++)
+            for (var x = 0; x < W; x++) {
+                var v = G[y * W + x];
+                if (v >= 0) {
+                    g2.fillStyle = PAL[v];
+                    g2.fillRect(f * W + x, y, 1, 1);
                 }
-        });
+            } });
         var url = c.toDataURL('image/png');
-        $('txt').value = '# sheet frame=' + COLS + 'x' + ROWS + ' frames=' + n + '\n' + url + '\n';
+        $('txt').value = '# sheet frame=' + W + 'x' + H + ' frames=' + n + '\n' + url + '\n';
         var im = $('sheetimg');
         im.src = url;
         im.style.display = 'block';
         sfx('fill');
     };
     $('expng').onclick = function () {
-        var k = Math.max(8, Math.floor(512 / Math.max(COLS, ROWS))), c = document.createElement('canvas');
-        c.width = COLS * k;
-        c.height = ROWS * k;
+        var k = Math.max(8, Math.floor(512 / Math.max(W, H))), c = document.createElement('canvas');
+        c.width = W * k;
+        c.height = H * k;
         var g2 = c.getContext('2d'), G = frames[fi];
-        for (var y = 0; y < ROWS; y++)
-            for (var x = 0; x < COLS; x++) {
-                var v = G[y * COLS + x];
+        for (var y = 0; y < H; y++)
+            for (var x = 0; x < W; x++) {
+                var v = G[y * W + x];
                 if (v >= 0) {
                     g2.fillStyle = PAL[v];
                     g2.fillRect(x * k, y * k, k, k);
@@ -1120,10 +883,7 @@
         im.style.maxWidth = '100%';
         sfx('fill');
     };
-    function atLabel() {
-        $('at').textContent = t(['at_pen', 'at_fill', 'at_pick', 'at_line', 'at_rect', 'at_rectf', 'at_select'][TOOL]);
-        $('at').className = TOOL ? 'on' : '';
-    }
+    function atLabel() { $('at').textContent = t(['at_pen', 'at_fill', 'at_pick', 'at_line', 'at_rect', 'at_rectf', 'at_select'][AT]); $('at').className = AT ? 'on' : ''; }
     function line(x0, y0, x1, y1, erase) {
         var dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, e = dx - dy, n = 0;
         while (n++ < 200) {
@@ -1146,8 +906,8 @@
     function press(kind) {
         $(kind === 'e' ? 'bB' : 'bA').classList.add('down');
         vib(10);
-        if (TOOL) {
-            toolAct(kind, Math.round(curX), Math.round(curY));
+        if (AT) {
+            toolAct(kind, Math.round(cx), Math.round(cy));
             return;
         }
         if (MM) {
@@ -1157,8 +917,8 @@
             autoLabel();
             if (AUTO) {
                 snap();
-                lastX = Math.round(curX);
-                lastY = Math.round(curY);
+                lastX = Math.round(cx);
+                lastY = Math.round(cy);
                 put(lastX, lastY, AUTO === 2);
                 draw();
             }
@@ -1166,20 +926,15 @@
         }
         held = kind;
         snap();
-        lastX = Math.round(curX);
-        lastY = Math.round(curY);
+        lastX = Math.round(cx);
+        lastY = Math.round(cy);
         put(lastX, lastY, kind === 'e');
         draw();
     }
-    function release() {
-        if (pdrag) {
-            pdrag.g._save();
-            pdrag = null;
-        }
-        held = null;
-        $('bA').classList.remove('down');
-        $('bB').classList.remove('down');
-    }
+    function release() { if (pdrag) {
+        pdrag.g._save();
+        pdrag = null;
+    } held = null; $('bA').classList.remove('down'); $('bB').classList.remove('down'); }
     function bind(id, kind) {
         var b = $(id);
         b.addEventListener('pointerdown', function (e) {
@@ -1199,7 +954,7 @@
                 }
                 if (!h.canvas) {
                     if (kind === 'd')
-                        uiClick(h.el);
+                        uiClick(h.el, h.s);
                     return;
                 }
             }
@@ -1208,9 +963,7 @@
         b.addEventListener('pointerup', release);
         b.addEventListener('pointercancel', release);
     }
-    function ptrScreen() {
-        return RO ? [window.innerWidth - pty, ptx] : [ptx, pty];
-    }
+    function ptrScreen() { return RO ? [window.innerWidth - pty, ptx] : [ptx, pty]; }
     function hit() {
         var sc = ptrScreen(), el = document.elementFromPoint(sc[0], sc[1]);
         if (!el || el === $('ptr'))
@@ -1220,28 +973,16 @@
         if (el.closest && (el.closest('#joyw') || el.closest('#btns')))
             return { el: null, canvas: false, s: sc };
         if (el.closest && el.closest('#anim, #palbox') && !el.closest('button, select, input')) {
-            var offs = [
-                [0, -9],
-                [0, 9],
-                [-9, 0],
-                [9, 0],
-                [-9, -9],
-                [9, 9],
-                [-9, 9],
-                [9, -9]
-            ];
+            var offs = [[0, -9], [0, 9], [-9, 0], [9, 0], [-9, -9], [9, 9], [-9, 9], [9, -9]];
             for (var oi = 0; oi < offs.length; oi++) {
                 var e2 = document.elementFromPoint(sc[0] + offs[oi][0], sc[1] + offs[oi][1]);
-                if (e2 &&
-                    e2.closest &&
-                    e2.closest('#anim button, #palbox button, #palbox .sw') &&
-                    !e2.closest('.pmin'))
+                if (e2 && e2.closest && e2.closest('#anim button, #palbox button, #palbox .sw') && !e2.closest('.pmin'))
                     return { el: e2, canvas: false, s: sc };
             }
         }
         return { el: el, canvas: false, s: sc };
     }
-    function uiClick(el) {
+    function uiClick(el, sc) {
         if (!el)
             return;
         if (el.id === 'bk') {
@@ -1272,24 +1013,13 @@
         }
         c.click();
     }
-    function ptrShow() {
-        var pe = $('ptr');
-        pe.style.display = MM && isLand() ? 'block' : 'none';
-        if (MM)
-            pe.style.transform = 'translate(' + ptx + 'px,' + pty + 'px)';
-    }
-    $('mm').onclick = function () {
-        MM = !MM;
-        store('mm', MM ? 1 : 0);
-        $('mm').className = MM ? 'on' : '';
-        if (MM) {
-            var r = lrect(cv);
-            ptx = r.left + r.width / 2;
-            pty = r.top + r.height / 2;
-        }
-        ptrShow();
-        draw();
-    };
+    function ptrShow() { var pe = $('ptr'); pe.style.display = (MM && isLand()) ? 'block' : 'none'; if (MM)
+        pe.style.transform = 'translate(' + ptx + 'px,' + pty + 'px)'; }
+    $('mm').onclick = function () { MM = !MM; store('mm', MM ? 1 : 0); $('mm').className = MM ? 'on' : ''; if (MM) {
+        var r = lrect(cv);
+        ptx = r.left + r.width / 2;
+        pty = r.top + r.height / 2;
+    } ptrShow(); draw(); };
     bind('bA', 'd');
     bind('bB', 'e');
     /* العصا */
@@ -1297,19 +1027,17 @@
     function jmove(e) {
         var r = lrect(joy), p = LP(e), x = p[0] - (r.left + r.width / 2), y = p[1] - (r.top + r.height / 2), m = Math.hypot(x, y), R = Math.max(10, r.width / 2 - knob.offsetWidth / 2 - 4);
         if (m > R) {
-            x = (x / m) * R;
-            y = (y / m) * R;
+            x = x / m * R;
+            y = y / m * R;
         }
         jx = x / R;
         jy = y / R;
         knob.style.transform = 'translate(' + x + 'px,' + y + 'px)';
     }
     var tapI = null, JO = [0, 0], moveMode = false, holdT = null, hs = [0, 0], hbase = [0, 0], HOLD = 3000;
-    function joyPos() {
-        joy.style.transform = 'translate(' + JO[0] + 'px,' + JO[1] + 'px)';
-    }
+    function joyPos() { joy.style.transform = 'translate(' + JO[0] + 'px,' + JO[1] + 'px)'; }
     try {
-        var sj = JSON.parse(load('joyo', '') || 'null');
+        var sj = JSON.parse(localStorage.getItem('pxa_joyo') || 'null');
         if (sj) {
             JO = sj;
             joyPos();
@@ -1326,16 +1054,10 @@
         moveMode = false;
         tapI = { t: performance.now(), mx: 0 };
         clearTimeout(holdT);
-        holdT = setTimeout(function () {
-            moveMode = true;
-            jx = jy = 0;
-            knobHome();
-            joy.style.outline = '4px dashed var(--acc)';
-            try {
-                navigator.vibrate && navigator.vibrate(60);
-            }
-            catch (er) { }
-        }, HOLD);
+        holdT = setTimeout(function () { moveMode = true; jx = jy = 0; knob.style.transform = 'translate(0,0)'; joy.style.outline = '4px dashed var(--acc)'; try {
+            navigator.vibrate && navigator.vibrate(60);
+        }
+        catch (er) { } }, HOLD);
         jmove(e);
     });
     joy.addEventListener('pointermove', function (e) {
@@ -1364,7 +1086,7 @@
             try {
                 var th = hit();
                 if (th && th.el && !th.canvas)
-                    uiClick(th.el);
+                    uiClick(th.el, th.s);
             }
             catch (er) { }
         }
@@ -1373,40 +1095,30 @@
             moveMode = false;
             joy.style.outline = '';
             try {
-                store('joyo', JSON.stringify(JO));
+                localStorage.setItem('pxa_joyo', JSON.stringify(JO));
             }
             catch (er) { }
         }
         jid = null;
         joy.classList.remove('act');
         jx = jy = 0;
-        knobHome();
+        knob.style.transform = 'translate(0,0)';
     }
     joy.addEventListener('pointerup', jend);
     joy.addEventListener('pointercancel', jend);
     joy.addEventListener('lostpointercapture', jend);
     window.addEventListener('pointerup', jend);
     window.addEventListener('pointercancel', jend);
-    window.addEventListener('blur', function () {
-        jid = null;
-        jx = jy = 0;
-        knobHome();
-    });
+    window.addEventListener('blur', function () { jid = null; jx = jy = 0; knob.style.transform = 'translate(0,0)'; });
     /* لمس الشبكة ينقل المؤشر */
     var touchOn = false, touchErase = false, tid = null;
-    function cellAt(e) {
-        var r = lrect(cv), p = LP(e);
-        return [
-            Math.max(0, Math.min(COLS - 1, Math.floor(((p[0] - r.left) / r.width) * COLS))),
-            Math.max(0, Math.min(ROWS - 1, Math.floor(((p[1] - r.top) / r.height) * ROWS)))
-        ];
-    }
+    function cellAt(e) { var r = lrect(cv), p = LP(e); return [Math.max(0, Math.min(W - 1, Math.floor((p[0] - r.left) / r.width * W))), Math.max(0, Math.min(H - 1, Math.floor((p[1] - r.top) / r.height * H)))]; }
     cv.addEventListener('pointerdown', function (e) {
         var c = cellAt(e);
-        curX = c[0];
-        curY = c[1];
+        cx = c[0];
+        cy = c[1];
         var tOn = touchOn || e.pointerType === 'pen' || !isLand();
-        if (tOn && TOOL) {
+        if (tOn && AT) {
             e.preventDefault();
             toolAct(touchErase ? 'e' : 'd', c[0], c[1]);
             return;
@@ -1425,107 +1137,41 @@
         }
         draw();
     });
-    cv.addEventListener('pointermove', function (e) {
-        if (e.pointerId !== tid)
-            return;
-        var c = cellAt(e);
-        line(lastX, lastY, c[0], c[1], touchErase);
-        lastX = c[0];
-        lastY = c[1];
-        curX = c[0];
-        curY = c[1];
-        draw();
-    });
-    cv.addEventListener('pointerup', function () {
-        tid = null;
-    });
-    cv.addEventListener('pointercancel', function () {
-        tid = null;
-    });
-    $('touch').onclick = function () {
-        touchOn = !touchOn;
-        $('touch').className = touchOn ? 'on' : '';
-    };
-    $('tool').onclick = function () {
-        touchErase = !touchErase;
-        $('tool').textContent = t(touchErase ? 'erase' : 'draw');
-    };
+    cv.addEventListener('pointermove', function (e) { if (e.pointerId !== tid)
+        return; var c = cellAt(e); line(lastX, lastY, c[0], c[1], touchErase); lastX = c[0]; lastY = c[1]; cx = c[0]; cy = c[1]; draw(); });
+    cv.addEventListener('pointerup', function () { tid = null; });
+    cv.addEventListener('pointercancel', function () { tid = null; });
+    $('touch').onclick = function () { touchOn = !touchOn; $('touch').className = touchOn ? 'on' : ''; };
+    $('tool').onclick = function () { touchErase = !touchErase; $('tool').textContent = t(touchErase ? 'erase' : 'draw'); };
     /* نقل الألوان إلى القائمة الظاهرة + أيقونات */
     var IC = {
-        undo: "<path d='M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3'/>",
-        redo: "<path d='M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3'/>",
-        clear: "<path d='M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13'/>",
-        fAdd: "<path d='M12 5v14M5 12h14'/>",
-        fCopy: "<rect x='8' y='8' width='12' height='12'/><path d='M16 8V4H4v12h4'/>",
-        fDel: "<path d='M5 5l14 14M19 5L5 19'/>",
-        fPrev: "<path d='M15 5l-7 7 7 7'/>",
-        fNext: "<path d='M9 5l7 7-7 7'/>",
-        flip: "<path d='M12 3v18M8 7L3 12l5 5M16 7l5 5-5 5'/>",
-        onion: "<path d='M12 3l9 5-9 5-9-5zM3 13l9 5 9-5'/>",
-        play: "<path d='M7 4l13 8-13 8z' fill='black'/>",
-        stop: "<rect x='6' y='6' width='12' height='12' fill='black'/>",
-        libb: "<path d='M3 6h6l2 2h10v11H3z'/>",
-        gear: "<circle cx='12' cy='12' r='3.5'/><path d='M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2'/>",
-        rot: "<path d='M20 12a8 8 0 11-3-6.2M20 4v5h-5'/>",
-        mm: "<path d='M5 3v15l4-4 3 6 3-1-3-6h6z'/>",
-        exm: "<path d='M12 3v12M7 10l5 5 5-5M4 20h16'/>",
+        undo: "<path d='M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3'/>", redo: "<path d='M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3'/>",
+        clear: "<path d='M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13'/>", fAdd: "<path d='M12 5v14M5 12h14'/>",
+        fCopy: "<rect x='8' y='8' width='12' height='12'/><path d='M16 8V4H4v12h4'/>", fDel: "<path d='M5 5l14 14M19 5L5 19'/>",
+        fPrev: "<path d='M15 5l-7 7 7 7'/>", fNext: "<path d='M9 5l7 7-7 7'/>", flip: "<path d='M12 3v18M8 7L3 12l5 5M16 7l5 5-5 5'/>",
+        onion: "<path d='M12 3l9 5-9 5-9-5zM3 13l9 5 9-5'/>", play: "<path d='M7 4l13 8-13 8z' fill='black'/>", stop: "<rect x='6' y='6' width='12' height='12' fill='black'/>",
+        libb: "<path d='M3 6h6l2 2h10v11H3z'/>", gear: "<circle cx='12' cy='12' r='3.5'/><path d='M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2'/>",
+        rot: "<path d='M20 12a8 8 0 11-3-6.2M20 4v5h-5'/>", mm: "<path d='M5 3v15l4-4 3 6 3-1-3-6h6z'/>", exm: "<path d='M12 3v12M7 10l5 5 5-5M4 20h16'/>",
         touch: "<path d='M9 11V5a2 2 0 014 0v6M13 11a2 2 0 014 0v3a6 6 0 01-6 6h-1a5 5 0 01-4-2l-2-4a2 2 0 013-1l1 1'/>",
-        swap: "<path d='M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4'/>",
-        pie: "<circle cx='12' cy='12' r='9'/><path d='M12 3v9l6 6M12 12L5 17'/>",
-        prec: "<circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='1.5'/><path d='M12 2v4M12 18v4M2 12h4M18 12h4'/>",
-        sym: "<path d='M12 3v18' stroke-dasharray='2 2'/><path d='M8 7L4 12l4 5zM16 7l4 5-4 5z'/>",
-        line: "<path d='M4 20L20 4'/><circle cx='4' cy='20' r='1.5'/><circle cx='20' cy='4' r='1.5'/>",
-        rect: "<rect x='4' y='6' width='16' height='12'/>",
-        rectf: "<rect x='4' y='6' width='16' height='12' fill='black'/>",
-        select: "<rect x='4' y='5' width='12' height='11' stroke-dasharray='3 3'/><path d='M14 14l6 6M20 14v6h-6'/>",
-        dot: "<rect x='8' y='8' width='8' height='8' fill='black'/><path d='M4 4h2M18 4h2M4 20h2M18 20h2'/>",
-        pen: "<path d='M4 20l1-5L16 4l4 4L9 19zM14 6l4 4'/>",
-        eraser: "<path d='M4 16l9-10 7 7-6 6H8zM9 11l7 7'/>",
-        fill: "<path d='M5 11l7-7 7 7-7 7zM19 15c1 2 2 3 2 4a2 2 0 01-4 0c0-1 1-2 2-4'/>",
-        pick: "<path d='M14 4l6 6-3 1-8 8H5v-4l8-8zM13 7l4 4'/>"
+        swap: "<path d='M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4'/>", pie: "<circle cx='12' cy='12' r='9'/><path d='M12 3v9l6 6M12 12L5 17'/>", prec: "<circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='1.5'/><path d='M12 2v4M12 18v4M2 12h4M18 12h4'/>", sym: "<path d='M12 3v18' stroke-dasharray='2 2'/><path d='M8 7L4 12l4 5zM16 7l4 5-4 5z'/>", line: "<path d='M4 20L20 4'/><circle cx='4' cy='20' r='1.5'/><circle cx='20' cy='4' r='1.5'/>", rect: "<rect x='4' y='6' width='16' height='12'/>", rectf: "<rect x='4' y='6' width='16' height='12' fill='black'/>", select: "<rect x='4' y='5' width='12' height='11' stroke-dasharray='3 3'/><path d='M14 14l6 6M20 14v6h-6'/>", dot: "<rect x='8' y='8' width='8' height='8' fill='black'/><path d='M4 4h2M18 4h2M4 20h2M18 20h2'/>", pen: "<path d='M4 20l1-5L16 4l4 4L9 19zM14 6l4 4'/>", eraser: "<path d='M4 16l9-10 7 7-6 6H8zM9 11l7 7'/>",
+        fill: "<path d='M5 11l7-7 7 7-7 7zM19 15c1 2 2 3 2 4a2 2 0 01-4 0c0-1 1-2 2-4'/>", pick: "<path d='M14 4l6 6-3 1-8 8H5v-4l8-8zM13 7l4 4'/>"
     };
-    function setIc(id, name) {
-        var el = $(id);
-        if (!el)
-            return;
-        var sv = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>" +
-            IC[name] +
-            '</svg>';
-        el.classList.add('ic');
-        el.style.setProperty('--ico', 'url("data:image/svg+xml,' + encodeURIComponent(sv) + '")');
-        el.title = el.textContent;
-    }
-    ['undo', 'redo', 'clear', 'fAdd', 'fCopy', 'fDel', 'fPrev', 'fNext', 'flip', 'onion', 'gear'].forEach(function (k) {
-        setIc(k, k);
-    });
+    function setIc(id, name) { var el = $(id); if (!el)
+        return; var sv = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>" + IC[name] + "</svg>"; el.classList.add('ic'); el.style.setProperty('--ico', 'url("data:image/svg+xml,' + encodeURIComponent(sv) + '")'); el.title = el.textContent; }
+    ['undo', 'redo', 'clear', 'fAdd', 'fCopy', 'fDel', 'fPrev', 'fNext', 'flip', 'onion', 'gear'].forEach(function (k) { setIc(k, k); });
     function initTabs() {
         var rt = document.createElement('div');
         rt.id = 'rtabs';
         var A = $('app'), cur = 'col';
         try {
-            cur = load('tab', null) || 'col';
+            cur = localStorage.getItem('pxa_tab') || 'col';
         }
         catch (e) { }
-        [
-            ['col', 'rtCol', 'tt_col'],
-            ['anim', 'rtAnim', 'tt_anim']
-        ].forEach(function (d) {
-            var b = document.createElement('button');
-            b.id = d[1];
-            b.onclick = function () {
-                cur = d[0];
-                A.dataset.tab = cur;
-                store('tab', cur);
-                mark();
-            };
-            rt.appendChild(b);
-        });
-        function mark() {
-            $('rtCol').className = cur === 'col' ? 'on' : '';
-            $('rtAnim').className = cur === 'anim' ? 'on' : '';
-            $('rtCol').textContent = ($('tt_col') || {}).textContent || 'الألوان';
-            $('rtAnim').textContent = ($('tt_anim') || {}).textContent || 'الأنيميشن';
+        [['col', 'rtCol', 'tt_col'], ['anim', 'rtAnim', 'tt_anim']].forEach(function (d) { var b = document.createElement('button'); b.id = d[1]; b.onclick = function () { cur = d[0]; A.dataset.tab = cur; try {
+            localStorage.setItem('pxa_tab', cur);
         }
+        catch (e) { } mark(); }; rt.appendChild(b); });
+        function mark() { $('rtCol').className = cur === 'col' ? 'on' : ''; $('rtAnim').className = cur === 'anim' ? 'on' : ''; $('rtCol').textContent = ($('tt_col') || {}).textContent || 'الألوان'; $('rtAnim').textContent = ($('tt_anim') || {}).textContent || 'الأنيميشن'; }
         A.appendChild(rt);
         A.dataset.tab = cur;
         mark();
@@ -1550,107 +1196,51 @@
         tb.id = 'tools';
         tb.className = 'row';
         $('bar').parentNode.insertBefore(tb, $('bar').nextSibling);
-        ['dot', 'fill', 'pick', 'line', 'rect', 'rectf', 'select'].forEach(function (nm, i) {
-            var b = document.createElement('button');
-            b.id = 'tl' + i;
-            b.setAttribute('aria-label', nm);
-            b.onclick = function () {
-                TOOL = i;
-                ANCHOR = null;
-                atLabel();
-                draw();
-            };
-            tb.appendChild(b);
-            setIc('tl' + i, nm);
-        });
+        ['dot', 'fill', 'pick', 'line', 'rect', 'rectf', 'select'].forEach(function (nm, i) { var b = document.createElement('button'); b.id = 'tl' + i; b.setAttribute('aria-label', nm); b.onclick = function () { AT = i; AS = null; atLabel(); draw(); }; tb.appendChild(b); setIc('tl' + i, nm); });
         var sb = document.createElement('button');
         sb.id = 'symB';
         sb.setAttribute('aria-label', 'sym');
-        sb.onclick = function () {
-            SYM = (SYM + 1) % 4;
-            store('sym', String(SYM));
-            draw();
-        };
+        sb.onclick = function () { SYM = (SYM + 1) % 4; try {
+            localStorage.setItem('pxa_sym', String(SYM));
+        }
+        catch (e) { } draw(); };
         tb.appendChild(sb);
         setIc('symB', 'sym');
         var pie = document.createElement('div');
         pie.id = 'pie';
         $('wrap').appendChild(pie);
-        function choose(i) {
-            TOOL = i;
-            ANCHOR = null;
-            atLabel();
-            draw();
-            closePie();
-        }
-        function openPie() {
-            var r = lrect($('stage'));
-            pie.style.left = r.left + r.width / 2 + 'px';
-            pie.style.top = r.top + r.height / 2 + 'px';
-            pie.classList.add('open');
-            pieOpen = true;
-            pieT = performance.now();
-            sfx('ui');
-        }
-        function closePie() {
-            pie.classList.remove('open');
-            pieOpen = false;
-            pieIdx = -1;
-            for (var q = 0; q < 6; q++)
-                $('pi' + q).classList.remove('hot');
-        }
-        ['dot', 'fill', 'pick', 'line', 'rect', 'rectf'].forEach(function (nm, i) {
-            var b = document.createElement('button');
-            b.id = 'pi' + i;
-            var a = ((-90 + i * 60) * Math.PI) / 180;
-            b.style.left = Math.cos(a) * 74 + 'px';
-            b.style.top = Math.sin(a) * 74 + 'px';
-            b.onclick = function () {
-                choose(i);
-            };
-            pie.appendChild(b);
-            setIc('pi' + i, nm);
-            b.classList.add('ic');
-        });
+        function choose(i) { AT = i; AS = null; atLabel(); draw(); closePie(); }
+        function openPie() { var r = lrect($('stage')); pie.style.left = (r.left + r.width / 2) + 'px'; pie.style.top = (r.top + r.height / 2) + 'px'; pie.classList.add('open'); pieOpen = true; pieT = performance.now(); sfx('ui'); }
+        function closePie() { pie.classList.remove('open'); pieOpen = false; pieIdx = -1; for (var q = 0; q < 6; q++)
+            $('pi' + q).classList.remove('hot'); }
+        ['dot', 'fill', 'pick', 'line', 'rect', 'rectf'].forEach(function (nm, i) { var b = document.createElement('button'); b.id = 'pi' + i; var a = (-90 + i * 60) * Math.PI / 180; b.style.left = Math.cos(a) * 74 + 'px'; b.style.top = Math.sin(a) * 74 + 'px'; b.onclick = function () { choose(i); }; pie.appendChild(b); setIc('pi' + i, nm); b.classList.add('ic'); });
         var pb = document.createElement('button');
         pb.id = 'pieB';
         pb.setAttribute('aria-label', 'pie');
         setIc('pieB', 'pie');
-        pb.addEventListener('pointerdown', function (e) {
-            e.preventDefault();
+        pb.addEventListener('pointerdown', function (e) { e.preventDefault(); if (pieOpen)
+            closePie();
+        else
+            openPie(); });
+        pb.addEventListener('pointerup', function () { if (pieOpen && performance.now() - pieT > 350 && pieIdx >= 0)
+            choose(pieIdx); });
+        pb.addEventListener('click', function (e) { if (e.detail === 0) {
             if (pieOpen)
                 closePie();
             else
                 openPie();
-        });
-        pb.addEventListener('pointerup', function () {
-            if (pieOpen && performance.now() - pieT > 350 && pieIdx >= 0)
-                choose(pieIdx);
-        });
-        pb.addEventListener('click', function (e) {
-            if (e.detail === 0) {
-                if (pieOpen)
-                    closePie();
-                else
-                    openPie();
-            }
-        });
+        } });
         var qb = document.createElement('button');
         qb.id = 'precB';
         qb.setAttribute('aria-label', 'precision');
-        qb.onclick = function () {
-            PREC = !PREC;
-            sfx('ui');
-        };
+        qb.onclick = function () { PREC = !PREC; sfx('ui'); };
         setIc('precB', 'prec');
         var pm = document.createElement('div');
         pm.id = 'padMid';
         var sw = document.createElement('button');
         sw.id = 'swapB';
         sw.setAttribute('aria-label', 'swap');
-        sw.onclick = function () {
-            $('mirT').click();
-        };
+        sw.onclick = function () { $('mirT').click(); };
         pm.appendChild(pb);
         pm.appendChild(qb);
         pm.appendChild(sw);
@@ -1659,21 +1249,13 @@
         setIc('precB', 'prec');
         setIc('swapB', 'swap');
         var bb = $('bar');
-        ['redo', 'tool', 'gear'].forEach(function (k) {
-            bb.appendChild($(k));
-        });
+        ['redo', 'tool', 'gear'].forEach(function (k) { bb.appendChild($(k)); });
         var stl = $('setTools');
-        ['rot', 'mm', 'touch', 'exm', 'libb', 'auto'].forEach(function (k) {
-            var e = $(k);
+        ['rot', 'mm', 'touch', 'exm', 'libb', 'auto'].forEach(function (k) { var e = $(k); e.classList.remove('ic'); e.style.removeProperty('--ico'); stl.appendChild(e); if (IC[k]) {
+            setIc(k, k);
             e.classList.remove('ic');
-            e.style.removeProperty('--ico');
-            stl.appendChild(e);
-            if (IC[k]) {
-                setIc(k, k);
-                e.classList.remove('ic');
-                e.classList.add('ics');
-            }
-        });
+            e.classList.add('ics');
+        } });
         document.body.appendChild($('curc'));
         document.body.appendChild($('at'));
         if (tr)
@@ -1681,80 +1263,35 @@
     }
     initLayout();
     setTimeout(initTabs, 0);
-    var ICK = [
-        'undo',
-        'redo',
-        'clear',
-        'fAdd',
-        'fCopy',
-        'fDel',
-        'fPrev',
-        'fNext',
-        'flip',
-        'onion',
-        'gear',
-        'play',
-        'tool',
-        'at'
-    ];
-    function icState() {
-        ICK.forEach(function (k) {
-            $(k).classList.add('ic');
-        });
-        setIc('play', playing ? 'stop' : 'play');
-        setIc('tool', touchErase ? 'eraser' : 'pen');
-        setIc('at', ['dot', 'fill', 'pick', 'line', 'rect', 'rectf', 'select'][TOOL]);
-    }
-    function icTools() {
-        $('swapB').classList.add('ic');
-        $('pieB').classList.add('ic');
-        $('precB').classList.add('ic');
-        $('precB').classList.toggle('on', PREC);
-        $('pieB').classList.toggle('on', pieOpen);
-        var sbb = $('symB');
-        sbb.classList.add('ic');
-        sbb.classList.toggle('on', SYM > 0);
-        for (var i = 0; i < 6; i++) {
-            var b = $('tl' + i);
-            b.classList.add('ic');
-            b.classList.toggle('on', TOOL === i);
-        }
-    }
+    var ICK = ['undo', 'redo', 'clear', 'fAdd', 'fCopy', 'fDel', 'fPrev', 'fNext', 'flip', 'onion', 'gear', 'play', 'tool', 'at'];
+    function icState() { ICK.forEach(function (k) { $(k).classList.add('ic'); }); setIc('play', playing ? 'stop' : 'play'); setIc('tool', touchErase ? 'eraser' : 'pen'); setIc('at', ['dot', 'fill', 'pick', 'line', 'rect', 'rectf', 'select'][AT]); }
+    function icTools() { $('swapB').classList.add('ic'); $('pieB').classList.add('ic'); $('precB').classList.add('ic'); $('precB').classList.toggle('on', PREC); $('pieB').classList.toggle('on', pieOpen); var sbb = $('symB'); sbb.classList.add('ic'); sbb.classList.toggle('on', SYM > 0); for (var i = 0; i < 6; i++) {
+        var b = $('tl' + i);
+        b.classList.add('ic');
+        b.classList.toggle('on', AT === i);
+    } }
     icState();
     icTools();
-    setInterval(function () {
-        icState();
-        icTools();
-    }, 300);
+    setInterval(function () { icState(); icTools(); }, 300);
     var MIR = false;
     try {
-        MIR = load('mir', null) === '1';
+        MIR = localStorage.getItem('pxa_mir') === '1';
     }
     catch (e) { }
-    function mirApply() {
-        var st = null;
-        try {
-            st = load('mir', null);
-        }
-        catch (e) { }
-        MIR = st == null ? !!RO : st === '1';
-        document.documentElement.classList.toggle('mir', MIR);
-        $('mirT').textContent = t(MIR ? 'on' : 'off');
-        $('mirT').className = MIR ? 'on' : '';
+    function mirApply() { var st = null; try {
+        st = localStorage.getItem('pxa_mir');
     }
-    $('mirT').onclick = function () {
-        var nv = !MIR;
-        store('mir', String(nv ? 1 : 0));
-        mirApply();
-        fit();
-        draw();
-    };
+    catch (e) { } MIR = st == null ? !!RO : st === '1'; document.documentElement.classList.toggle('mir', MIR); $('mirT').textContent = t(MIR ? 'on' : 'off'); $('mirT').className = MIR ? 'on' : ''; }
+    $('mirT').onclick = function () { var nv = !MIR; try {
+        localStorage.setItem('pxa_mir', String(nv ? 1 : 0));
+    }
+    catch (e) { } mirApply(); fit(); draw(); };
     setTimeout(mirApply, 0);
     /* شروط الاستعمال: بلا موافقة لا يُفتح التطبيق */
     (function () {
         var ok = false;
         try {
-            ok = load('terms', null) === '1';
+            ok = localStorage.getItem('pxa_terms') === '1';
         }
         catch (e) { }
         var tm = $('terms');
@@ -1762,144 +1299,73 @@
             return;
         tm.hidden = false;
         var ts = $('tscroll'), read = false;
-        function chk() {
-            if (ts.scrollTop + ts.clientHeight >= ts.scrollHeight - 4)
-                read = true;
-            $('tYes').disabled = !(read && $('tChk').checked);
-            $('tHint').hidden = read && $('tChk').checked;
-        }
+        function chk() { if (ts.scrollTop + ts.clientHeight >= ts.scrollHeight - 4)
+            read = true; $('tYes').disabled = !(read && $('tChk').checked); $('tHint').hidden = read && $('tChk').checked; }
         ts.addEventListener('scroll', chk);
         $('tChk').onchange = chk;
         setTimeout(chk, 200);
-        $('tYes').onclick = function () {
-            store('terms', '1');
-            tm.hidden = true;
-            fit();
-            draw();
-        };
-        $('tNo').onclick = function () {
-            $('tMsg').hidden = false;
-        };
+        $('tYes').onclick = function () { try {
+            localStorage.setItem('pxa_terms', '1');
+        }
+        catch (e) { } tm.hidden = true; fit(); draw(); };
+        $('tNo').onclick = function () { $('tMsg').hidden = false; };
     })();
     /* أسهم + بكسل مثالي */
     var DPON = false;
     try {
-        DPON = load('dp', null) === '1';
+        DPON = localStorage.getItem('pxa_dp') === '1';
     }
     catch (e) { }
     IC.up = "<path d='M12 19V5M5 12l7-7 7 7'/>";
     IC.down = "<path d='M12 5v14M5 12l7 7 7-7'/>";
     IC.left = "<path d='M19 12H5M12 5l-7 7 7 7'/>";
     IC.right = "<path d='M5 12h14M12 5l7 7-7 7'/>";
-    [
-        ['dpU', 'up', 0, -1],
-        ['dpL', 'left', -1, 0],
-        ['dpR', 'right', 1, 0],
-        ['dpD', 'down', 0, 1]
-    ].forEach(function (d) {
+    [['dpU', 'up', 0, -1], ['dpL', 'left', -1, 0], ['dpR', 'right', 1, 0], ['dpD', 'down', 0, 1]].forEach(function (d) {
         var b = $(d[0]), tm = null, iv = null;
         setIc(d[0], d[1]);
         function stepCur() {
-            var nx = Math.max(0, Math.min(COLS - 1, Math.round(curX) + d[2])), ny = Math.max(0, Math.min(ROWS - 1, Math.round(curY) + d[3]));
-            curX = nx;
-            curY = ny;
+            var nx = Math.max(0, Math.min(W - 1, Math.round(cx) + d[2])), ny = Math.max(0, Math.min(H - 1, Math.round(cy) + d[3]));
+            cx = nx;
+            cy = ny;
             var r = lrect(cv);
-            ptx = r.left + ((curX + 0.5) / COLS) * r.width;
-            pty = r.top + ((curY + 0.5) / ROWS) * r.height;
+            ptx = r.left + (cx + 0.5) / W * r.width;
+            pty = r.top + (cy + 0.5) / H * r.height;
             pOver = true;
             ptrShow();
             lastSfx = 0;
-            if (held && !TOOL) {
+            if (held && !AT) {
                 line(lastX, lastY, nx, ny, held === 'e');
                 lastX = nx;
                 lastY = ny;
             }
             draw();
         }
-        function stop() {
-            clearTimeout(tm);
-            clearInterval(iv);
-            tm = iv = null;
-        }
-        b.addEventListener('pointerdown', function (e) {
-            e.preventDefault();
-            stepCur();
-            vib(6);
-            tm = setTimeout(function () {
-                iv = setInterval(stepCur, 90);
-            }, 320);
-        });
-        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
-            b.addEventListener(ev, stop);
-        });
+        function stop() { clearTimeout(tm); clearInterval(iv); tm = iv = null; }
+        b.addEventListener('pointerdown', function (e) { e.preventDefault(); stepCur(); vib(6); tm = setTimeout(function () { iv = setInterval(stepCur, 90); }, 320); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { b.addEventListener(ev, stop); });
     });
-    function dpApply() {
-        $('joy').style.display = DPON ? 'none' : '';
-        $('dpad').style.display = DPON ? 'grid' : 'none';
-        $('dpT').textContent = t(DPON ? 'on' : 'off');
-        $('dpT').className = DPON ? 'on' : '';
-        $('ppT').textContent = t(PIXP ? 'on' : 'off');
-        $('ppT').className = PIXP ? 'on' : '';
+    function dpApply() { $('joy').style.display = DPON ? 'none' : ''; $('dpad').style.display = DPON ? 'grid' : 'none'; $('dpT').textContent = t(DPON ? 'on' : 'off'); $('dpT').className = DPON ? 'on' : ''; $('ppT').textContent = t(PIXP ? 'on' : 'off'); $('ppT').className = PIXP ? 'on' : ''; }
+    $('dpT').onclick = function () { DPON = !DPON; try {
+        localStorage.setItem('pxa_dp', String(DPON ? 1 : 0));
     }
-    $('dpT').onclick = function () {
-        DPON = !DPON;
-        store('dp', String(DPON ? 1 : 0));
-        dpApply();
-        fit();
-    };
-    $('ppT').onclick = function () {
-        PIXP = !PIXP;
-        store('pp', String(PIXP ? 1 : 0));
-        dpApply();
-    };
+    catch (e) { } dpApply(); fit(); };
+    $('ppT').onclick = function () { PIXP = !PIXP; try {
+        localStorage.setItem('pxa_pp', String(PIXP ? 1 : 0));
+    }
+    catch (e) { } dpApply(); };
     setTimeout(dpApply, 0);
     /* قائمتان تُسحبان إلى أي مكان: الألوان والأنيميشن */
     var ZN = [];
-    function zonesFor(w, h) {
-        var m = 6, X = [m, VW() - w - m], Y = [m, VH() - h - m];
-        return [
-            [X[0], Y[0]],
-            [X[1], Y[0]],
-            [X[0], Y[1]],
-            [X[1], Y[1]]
-        ];
-    }
-    function zonesShow(el) {
-        var r = lrect(el), zs = zonesFor(r.width, r.height);
-        zs.forEach(function (z, i) {
-            if (!ZN[i]) {
-                ZN[i] = document.createElement('div');
-                ZN[i].className = 'zone';
-                $('wrap').appendChild(ZN[i]);
-            }
-            var d = ZN[i];
-            d.style.cssText =
-                'display:block;left:' +
-                    z[0] +
-                    'px;top:' +
-                    z[1] +
-                    'px;width:' +
-                    r.width +
-                    'px;height:' +
-                    r.height +
-                    'px';
-        });
-    }
-    function zonesSnap(el) {
-        var r = lrect(el), zs = zonesFor(r.width, r.height), b = 0, bd = 1e9;
-        zs.forEach(function (z, i) {
-            var d = Math.hypot(z[0] - r.left, z[1] - r.top);
-            if (d < bd) {
-                bd = d;
-                b = i;
-            }
-        });
-        el.style.left = zs[b][0] + 'px';
-        el.style.top = zs[b][1] + 'px';
-        ZN.forEach(function (d) {
-            d.style.display = 'none';
-        });
-    }
+    function zonesFor(w, h) { var m = 6, X = [m, VW() - w - m], Y = [m, VH() - h - m]; return [[X[0], Y[0]], [X[1], Y[0]], [X[0], Y[1]], [X[1], Y[1]]]; }
+    function zonesShow(el) { var r = lrect(el), zs = zonesFor(r.width, r.height); zs.forEach(function (z, i) { if (!ZN[i]) {
+        ZN[i] = document.createElement('div');
+        ZN[i].className = 'zone';
+        $('wrap').appendChild(ZN[i]);
+    } var d = ZN[i]; d.style.cssText = 'display:block;left:' + z[0] + 'px;top:' + z[1] + 'px;width:' + r.width + 'px;height:' + r.height + 'px'; }); }
+    function zonesSnap(el) { var r = lrect(el), zs = zonesFor(r.width, r.height), b = 0, bd = 1e9; zs.forEach(function (z, i) { var d = Math.hypot(z[0] - r.left, z[1] - r.top); if (d < bd) {
+        bd = d;
+        b = i;
+    } }); el.style.left = zs[b][0] + 'px'; el.style.top = zs[b][1] + 'px'; ZN.forEach(function (d) { d.style.display = 'none'; }); }
     function dragify(id) {
         var el = $(id), g = document.createElement('span');
         g.className = 'grip';
@@ -1912,105 +1378,52 @@
         mn.className = 'pmin';
         mn.textContent = '\u2013';
         rz.className = 'rsz';
-        mn.onclick = function () {
-            el.classList.toggle('min');
-            mn.textContent = el.classList.contains('min') ? '+' : '\u2013';
-        };
+        mn.onclick = function () { el.classList.toggle('min'); mn.textContent = el.classList.contains('min') ? '+' : '\u2013'; };
         hd.appendChild(g);
         hd.appendChild(tt);
         hd.appendChild(mn);
         el.insertBefore(hd, el.firstChild);
         el.appendChild(rz);
         var rs = null;
-        rz.addEventListener('pointerdown', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            floatIt();
-            var r = lrect(el);
-            rs = { id: e.pointerId, p: LP(e), w: r.width, h: r.height };
-            try {
-                rz.setPointerCapture(e.pointerId);
-            }
-            catch (er) { }
-        });
-        rz.addEventListener('pointermove', function (e) {
-            if (!rs || e.pointerId !== rs.id)
-                return;
-            var p = LP(e), r = lrect(el);
-            el.style.width = Math.max(120, Math.min(VW() - r.left, rs.w + p[0] - rs.p[0])) + 'px';
-            el.style.height = Math.max(60, Math.min(VH() - r.top, rs.h + p[1] - rs.p[1])) + 'px';
-            el.style.overflow = 'auto';
-        });
-        function rsUp(e) {
-            if (rs && e.pointerId === rs.id) {
-                rs = null;
-                save();
-            }
+        rz.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); floatIt(); var r = lrect(el); rs = { id: e.pointerId, p: LP(e), w: r.width, h: r.height }; try {
+            rz.setPointerCapture(e.pointerId);
         }
+        catch (er) { } });
+        rz.addEventListener('pointermove', function (e) { if (!rs || e.pointerId !== rs.id)
+            return; var p = LP(e), r = lrect(el); el.style.width = Math.max(120, Math.min(VW() - r.left, rs.w + p[0] - rs.p[0])) + 'px'; el.style.height = Math.max(60, Math.min(VH() - r.top, rs.h + p[1] - rs.p[1])) + 'px'; el.style.overflow = 'auto'; });
+        function rsUp(e) { if (rs && e.pointerId === rs.id) {
+            rs = null;
+            save();
+        } }
         rz.addEventListener('pointerup', rsUp);
         rz.addEventListener('pointercancel', rsUp);
-        function place(x, y) {
+        function place(x, y) { var r = lrect(el); x = Math.max(0, Math.min(VW() - Math.min(r.width, VW()), x)); y = Math.max(0, Math.min(VH() - 30, y)); el.style.left = x + 'px'; el.style.top = y + 'px'; return [x, y]; }
+        function floatIt() { if (!el.classList.contains('floatp')) {
             var r = lrect(el);
-            x = Math.max(0, Math.min(VW() - Math.min(r.width, VW()), x));
-            y = Math.max(0, Math.min(VH() - 30, y));
-            el.style.left = x + 'px';
-            el.style.top = y + 'px';
-            return [x, y];
-        }
-        function floatIt() {
-            if (!el.classList.contains('floatp')) {
-                var r = lrect(el);
-                el.classList.add('floatp');
-                el.style.right = 'auto';
-                el.style.left = r.left + 'px';
-                el.style.top = r.top + 'px';
-                el.style.width = Math.min(r.width, VW() - 8) + 'px';
-            }
-        }
+            el.classList.add('floatp');
+            el.style.right = 'auto';
+            el.style.left = r.left + 'px';
+            el.style.top = r.top + 'px';
+            el.style.width = Math.min(r.width, VW() - 8) + 'px';
+        } }
         var gx = 0, gy = 0, gid = null;
-        g.addEventListener('pointerdown', function (e) {
-            e.preventDefault();
-            var r = lrect(el), p = LP(e);
-            floatIt();
-            zonesShow(el);
-            gx = p[0] - r.left;
-            gy = p[1] - r.top;
-            gid = e.pointerId;
-            try {
-                g.setPointerCapture(gid);
-            }
-            catch (er) { }
-        });
-        g.addEventListener('pointermove', function (e) {
-            if (e.pointerId !== gid)
-                return;
-            var p = LP(e);
-            place(p[0] - gx, p[1] - gy);
-        });
-        function save() {
-            var r = lrect(el);
-            try {
-                localStorage.setItem('pxa_pos2_' + id, JSON.stringify([r.left, r.top, r.width, el.style.height ? r.height : 0]));
-            }
-            catch (er) { }
+        g.addEventListener('pointerdown', function (e) { e.preventDefault(); var r = lrect(el), p = LP(e); floatIt(); zonesShow(el); gx = p[0] - r.left; gy = p[1] - r.top; gid = e.pointerId; try {
+            g.setPointerCapture(gid);
         }
-        function up(e) {
-            if (e.pointerId !== gid)
-                return;
-            gid = null;
-            zonesSnap(el);
-            save();
+        catch (er) { } });
+        g.addEventListener('pointermove', function (e) { if (e.pointerId !== gid)
+            return; var p = LP(e); place(p[0] - gx, p[1] - gy); });
+        function save() { var r = lrect(el); try {
+            localStorage.setItem('pxa_pos2_' + id, JSON.stringify([r.left, r.top, r.width, el.style.height ? r.height : 0]));
         }
+        catch (er) { } }
+        function up(e) { if (e.pointerId !== gid)
+            return; gid = null; zonesSnap(el); save(); }
         g._el = el;
         g._place = place;
         g._float = floatIt;
-        g._save = function () {
-            zonesSnap(el);
-            save();
-        };
-        g._show = function () {
-            zonesShow(el);
-        };
+        g._save = function () { zonesSnap(el); save(); };
+        g._show = function () { zonesShow(el); };
         g.addEventListener('pointerup', up);
         g.addEventListener('pointercancel', up);
         try {
@@ -2029,32 +1442,13 @@
     }
     dragify('palbox');
     dragify('anim');
-    $('panReset').onclick = function () {
-        ['palbox', 'anim'].forEach(function (id) {
-            var el = $(id);
-            el.classList.remove('floatp');
-            el.style.left =
-                el.style.top =
-                    el.style.width =
-                        el.style.right =
-                            el.style.height =
-                                el.style.overflow =
-                                    '';
-            el.classList.remove('min');
-            try {
-                localStorage.removeItem('pxa_pos2_' + id);
-            }
-            catch (er) { }
-        });
-        JO = [0, 0];
-        joyPos();
-        try {
-            localStorage.removeItem('pxa_joyo');
-        }
-        catch (er) { }
-        fit();
-        draw();
-    };
+    $('panReset').onclick = function () { ['palbox', 'anim'].forEach(function (id) { var el = $(id); el.classList.remove('floatp'); el.style.left = el.style.top = el.style.width = el.style.right = el.style.height = el.style.overflow = ''; el.classList.remove('min'); try {
+        localStorage.removeItem('pxa_pos2_' + id);
+    }
+    catch (er) { } }); JO = [0, 0]; joyPos(); try {
+        localStorage.removeItem('pxa_joyo');
+    }
+    catch (er) { } fit(); draw(); };
     /* تكبير الرسمة بالنسبة المئوية + إصبعين */
     var ZS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
     function zoomSet(z) {
@@ -2075,78 +1469,47 @@
         zi.textContent = '+';
         lb.textContent = '100%';
         lb.title = 'تكبير';
-        function step(d) {
-            var i = 0;
-            for (var k = 0; k < ZS.length; k++)
-                if (ZS[k] <= ZM + 0.001)
-                    i = k;
-            zoomSet(ZS[Math.max(0, Math.min(ZS.length - 1, i + d))]);
-        }
-        zo.onclick = function () {
-            step(-1);
-        };
-        zi.onclick = function () {
-            step(1);
-        };
-        lb.onclick = function () {
-            zoomSet(1);
-        };
+        function step(d) { var i = 0; for (var k = 0; k < ZS.length; k++)
+            if (ZS[k] <= ZM + 0.001)
+                i = k; zoomSet(ZS[Math.max(0, Math.min(ZS.length - 1, i + d))]); }
+        zo.onclick = function () { step(-1); };
+        zi.onclick = function () { step(1); };
+        lb.onclick = function () { zoomSet(1); };
         tb.appendChild(zo);
         tb.appendChild(lb);
         tb.appendChild(zi);
         var pts = {}, d0 = 0, z0 = 1, st = $('stage');
-        function dist() {
-            var k = Object.keys(pts);
-            if (k.length < 2)
-                return 0;
-            var a = pts[k[0]], b = pts[k[1]];
-            return Math.hypot(a.x - b.x, a.y - b.y);
-        }
-        st.addEventListener('pointerdown', function (e) {
-            pts[e.pointerId] = { x: e.clientX, y: e.clientY };
-            if (Object.keys(pts).length === 2) {
-                d0 = dist();
-                z0 = ZM;
-            }
-        });
-        st.addEventListener('pointermove', function (e) {
-            if (!pts[e.pointerId])
-                return;
-            pts[e.pointerId] = { x: e.clientX, y: e.clientY };
-            if (Object.keys(pts).length === 2 && d0 > 10) {
-                zoomSet(Math.round(((z0 * dist()) / d0) * 20) / 20);
-            }
-        });
-        function up(e) {
-            delete pts[e.pointerId];
-        }
+        function dist() { var k = Object.keys(pts); if (k.length < 2)
+            return 0; var a = pts[k[0]], b = pts[k[1]]; return Math.hypot(a.x - b.x, a.y - b.y); }
+        st.addEventListener('pointerdown', function (e) { pts[e.pointerId] = { x: e.clientX, y: e.clientY }; if (Object.keys(pts).length === 2) {
+            d0 = dist();
+            z0 = ZM;
+        } });
+        st.addEventListener('pointermove', function (e) { if (!pts[e.pointerId])
+            return; pts[e.pointerId] = { x: e.clientX, y: e.clientY }; if (Object.keys(pts).length === 2 && d0 > 10) {
+            zoomSet(Math.round(z0 * dist() / d0 * 20) / 20);
+        } });
+        function up(e) { delete pts[e.pointerId]; }
         st.addEventListener('pointerup', up);
         st.addEventListener('pointercancel', up);
     })();
     /* تصدير GIF */
     function makeGif(frs, w, h, pal, sc, delay) {
         var n = Math.min(pal.length, 255), tr = n, bits = 1;
-        while (1 << bits < n + 1)
+        while ((1 << bits) < n + 1)
             bits++;
         var o = [];
-        function b(v) {
-            o.push(v & 255);
-        }
-        function t(x) {
-            for (var i = 0; i < x.length; i++)
-                b(x.charCodeAt(i));
-        }
-        function w2(v) {
-            b(v);
-            b(v >> 8);
-        }
+        function b(v) { o.push(v & 255); }
+        function t(x) { for (var i = 0; i < x.length; i++)
+            b(x.charCodeAt(i)); }
+        function w2(v) { b(v); b(v >> 8); }
         t('GIF89a');
         w2(w * sc);
         w2(h * sc);
         b(0x80 | (bits - 1) | ((bits - 1) << 4));
         b(0);
         b(0);
-        for (var i = 0; i < 1 << bits; i++) {
+        for (var i = 0; i < (1 << bits); i++) {
             var c = i < n ? pal[i] : '#000000';
             b(parseInt(c.substr(1, 2), 16));
             b(parseInt(c.substr(3, 2), 16));
@@ -2183,15 +1546,11 @@
                 }
             b(mcs);
             var clear = 1 << mcs, eoi = clear + 1, next = eoi + 1, size = mcs + 1, dict = new Map(), bytes = [], cur = 0, nb = 0;
-            function put(code) {
-                cur |= code << nb;
-                nb += size;
-                while (nb >= 8) {
-                    bytes.push(cur & 255);
-                    cur = cur >>> 8;
-                    nb -= 8;
-                }
-            }
+            function put(code) { cur |= code << nb; nb += size; while (nb >= 8) {
+                bytes.push(cur & 255);
+                cur = cur >>> 8;
+                nb -= 8;
+            } }
             put(clear);
             var prefix = idx[0];
             for (var j = 1; j < idx.length; j++) {
@@ -2233,8 +1592,8 @@
     gB.id = 'gifB';
     gB.textContent = 'تصدير GIF';
     gB.onclick = function () {
-        saveView();
-        var sc = Math.max(2, Math.floor(320 / Math.max(COLS, ROWS))), by = makeGif(frames, COLS, ROWS, PAL, sc, Math.max(2, Math.round(100 / fps)));
+        VWS[VCUR] = { frames: frames, fi: fi };
+        var sc = Math.max(2, Math.floor(320 / Math.max(W, H))), by = makeGif(frames, W, H, PAL, sc, Math.max(2, Math.round(100 / fps)));
         var bin = '';
         for (var i = 0; i < by.length; i++)
             bin += String.fromCharCode(by[i]);
@@ -2248,11 +1607,8 @@
     $('sheet').parentNode.appendChild(gB);
     /* ترتيب الإعدادات في مجموعات */
     (function () {
-        var set = $('set');
-        function box(id) {
-            var e = $(id);
-            return e ? e.closest('label') || e.closest('.row') || e : null;
-        }
+        var set = $('set'), head = set.firstElementChild, fin = null;
+        function box(id) { var e = $(id); return e ? (e.closest('label') || e.closest('.row') || e) : null; }
         var groups = [
             ['المظهر', ['thLight', 'bgc', 'cur', 'lang'], true],
             ['الجويستيك', ['mirT', 'dpT', 'hideT', 'spd', 'usz', 'joyReset', 't_hint'], false],
@@ -2267,11 +1623,8 @@
             var sm = document.createElement('summary');
             sm.textContent = g[0];
             d.appendChild(sm);
-            g[1].forEach(function (id) {
-                var b = id === 't_hint' ? $(id) : box(id);
-                if (b && !d.contains(b))
-                    d.appendChild(b);
-            });
+            g[1].forEach(function (id) { var b = id === 't_hint' ? $(id) : box(id); if (b && !d.contains(b))
+                d.appendChild(b); });
             set.appendChild(d);
         });
     })();
@@ -2279,85 +1632,51 @@
     (function () {
         var G = {
             sun: "<circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19'/>",
-            paint: "<rect x='4' y='4' width='16' height='16' rx='3'/>",
-            cursor: "<path d='M5 3l14 8-6 2-2 6z'/>",
+            paint: "<rect x='4' y='4' width='16' height='16' rx='3'/>", cursor: "<path d='M5 3l14 8-6 2-2 6z'/>",
             lang: "<circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18'/>",
-            swap: "<path d='M4 8h16M16 4l4 4-4 4M20 16H4M8 12l-4 4 4 4'/>",
-            dpad: "<path d='M12 3v6M12 15v6M3 12h6M15 12h6'/>",
+            swap: "<path d='M4 8h16M16 4l4 4-4 4M20 16H4M8 12l-4 4 4 4'/>", dpad: "<path d='M12 3v6M12 15v6M3 12h6M15 12h6'/>",
             eye: "<path d='M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z'/><circle cx='12' cy='12' r='3'/>",
-            speed: "<path d='M4 18a8 8 0 1116 0M12 18l4-6'/>",
-            size: "<path d='M4 20L20 4M4 14v6h6M14 4h6v6'/>",
-            reset: "<path d='M4 12a8 8 0 108-8M4 4v6h6'/>",
-            sound: "<path d='M4 9v6h4l5 4V5L8 9z'/>",
-            clean: "<path d='M4 18l6-12 4 8 3-4 3 8'/>",
-            play: "<path d='M7 4l13 8-13 8z'/>",
+            speed: "<path d='M4 18a8 8 0 1116 0M12 18l4-6'/>", size: "<path d='M4 20L20 4M4 14v6h6M14 4h6v6'/>",
+            reset: "<path d='M4 12a8 8 0 108-8M4 4v6h6'/>", sound: "<path d='M4 9v6h4l5 4V5L8 9z'/>",
+            clean: "<path d='M4 18l6-12 4 8 3-4 3 8'/>", play: "<path d='M7 4l13 8-13 8z'/>",
             panels: "<rect x='3' y='3' width='8' height='8'/><rect x='13' y='3' width='8' height='8'/><rect x='3' y='13' width='18' height='8'/>",
-            joy: "<circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='3'/>",
-            brush: "<path d='M4 20l4-1 11-11-3-3L5 16z'/>"
+            joy: "<circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='3'/>", brush: "<path d='M4 20l4-1 11-11-3-3L5 16z'/>"
         };
-        function mk(name) {
-            var sv = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>" +
-                G[name] +
-                '</svg>', i = document.createElement('i');
-            i.className = 'gi';
-            i.style.setProperty('--ico', 'url("data:image/svg+xml,' + encodeURIComponent(sv) + '")');
-            return i;
-        }
-        function put(el, name) {
-            if (!el)
-                return;
-            if (el.tagName === 'SUMMARY') {
-                if (!el.querySelector('.gi'))
-                    el.insertBefore(mk(name), el.firstChild);
-                return;
-            }
-            var pv = el.previousElementSibling;
-            if (pv && pv.classList.contains('gi'))
-                return;
-            el.parentNode.insertBefore(mk(name), el);
-        }
-        var map = {
-            t_bg: 'paint',
-            t_cur: 'cursor',
-            t_lang: 'lang',
-            t_mir: 'swap',
-            t_dp: 'dpad',
-            t_hide: 'eye',
-            t_spd: 'speed',
-            t_usz: 'size',
-            t_pp: 'clean',
-            t_fps: 'play'
-        };
-        Object.keys(map).forEach(function (id) {
-            put($(id), map[id]);
-        });
+        function mk(name) { var sv = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>" + G[name] + "</svg>", i = document.createElement('i'); i.className = 'gi'; i.style.setProperty('--ico', 'url("data:image/svg+xml,' + encodeURIComponent(sv) + '")'); return i; }
+        function put(el, name) { if (!el)
+            return; if (el.tagName === 'SUMMARY') {
+            if (!el.querySelector('.gi'))
+                el.insertBefore(mk(name), el.firstChild);
+            return;
+        } var pv = el.previousElementSibling; if (pv && pv.classList.contains('gi'))
+            return; el.parentNode.insertBefore(mk(name), el); }
+        var map = { t_bg: 'paint', t_cur: 'cursor', t_lang: 'lang', t_mir: 'swap', t_dp: 'dpad', t_hide: 'eye', t_spd: 'speed', t_usz: 'size', t_pp: 'clean', t_fps: 'play' };
+        Object.keys(map).forEach(function (id) { put($(id), map[id]); });
         put($('thLight'), 'sun');
         put($('joyReset'), 'reset');
         put($('panReset'), 'panels');
         put($('tSnd'), 'sound');
-        var sums = { المظهر: 'sun', الجويستيك: 'joy', 'الصوت والرسم': 'brush', القوائم: 'panels' };
-        Array.prototype.forEach.call(document.querySelectorAll('#set details > summary'), function (sm) {
-            var n = sm.textContent;
-            put(sm, sums[n]);
-        });
+        var sums = { 'المظهر': 'sun', 'الجويستيك': 'joy', 'الصوت والرسم': 'brush', 'القوائم': 'panels' };
+        Array.prototype.forEach.call(document.querySelectorAll('#set details > summary'), function (sm) { var n = sm.textContent; put(sm, sums[n]); });
     })();
     /* زوايا الأنيميشن + استبدال لون + صورة مرجعية */
     var VN = { side: 'جانب', back: 'خلف', front: 'أمام' }, VO = ['side', 'back', 'front'];
     var viewB = document.createElement('button');
     viewB.id = 'viewB';
     $('anim').insertBefore(viewB, $('play'));
-    function viewLabel() {
-        viewB.textContent = 'زاوية: ' + VN[VCUR];
-    }
+    function viewLabel() { viewB.textContent = 'زاوية: ' + VN[VCUR]; }
     viewB.onclick = function () {
         if (playing)
             return;
         sfx('ui');
-        saveView();
+        VWS[VCUR] = { frames: frames, fi: fi };
         VCUR = VO[(VO.indexOf(VCUR) + 1) % 3];
         var v = VWS[VCUR];
         if (!v) {
-            v = VWS[VCUR] = { frames: [blankGrid()], fi: 0 };
+            var g = [];
+            for (var i = 0; i < W * H; i++)
+                g.push(-1);
+            v = VWS[VCUR] = { frames: [g], fi: 0 };
         }
         frames = v.frames;
         fi = Math.min(v.fi, frames.length - 1);
@@ -2372,10 +1691,10 @@
     rcB.id = 'rcB';
     rcB.textContent = 'بدّل لون';
     rcB.onclick = function () {
-        var x = Math.round(curX), y = Math.round(curY);
-        if (!inGrid(x, y))
+        var x = Math.round(cx), y = Math.round(cy);
+        if (x < 0 || y < 0 || x >= W || y >= H)
             return;
-        var old = grid[y * COLS + x];
+        var old = grid[y * W + x];
         if (old < 0 || old === sel)
             return;
         snap();
@@ -2393,51 +1712,27 @@
     var rfB = document.createElement('button');
     rfB.id = 'rfB';
     rfB.textContent = 'صورة مرجعية';
-    rfB.onclick = function () {
-        if (REF) {
-            REF = null;
-            refOk = false;
-            rfB.textContent = 'صورة مرجعية';
-            draw();
-        }
-        else
-            rfI.click();
-    };
-    rfI.onchange = function () {
-        var f = rfI.files && rfI.files[0];
-        if (!f)
-            return;
-        var u = URL.createObjectURL(f), im = new Image();
-        im.onload = function () {
-            REF = im;
-            refOk = true;
-            rfB.textContent = 'إخفاء الصورة';
-            draw();
-        };
-        im.src = u;
-        rfI.value = '';
-    };
+    rfB.onclick = function () { if (REF) {
+        REF = null;
+        refOk = false;
+        rfB.textContent = 'صورة مرجعية';
+        draw();
+    }
+    else
+        rfI.click(); };
+    rfI.onchange = function () { var f = rfI.files && rfI.files[0]; if (!f)
+        return; var u = URL.createObjectURL(f), im = new Image(); im.onload = function () { REF = im; refOk = true; rfB.textContent = 'إخفاء الصورة'; draw(); }; im.src = u; rfI.value = ''; };
     var stt = $('setTools');
     stt.appendChild(rcB);
     stt.appendChild(rfB);
-    var APP_VER = '2026-11-16.7';
+    var APP_VER = '2026-11-16.4';
     function hardUpdate() {
-        var done = function () {
-            location.reload();
-        }, ps = [];
+        var done = function () { location.reload(); }, ps = [];
         try {
             if (navigator.serviceWorker)
-                ps.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
-                    return Promise.all(rs.map(function (r) {
-                        return r.unregister();
-                    }));
-                }));
+                ps.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
             if (window.caches)
-                ps.push(caches.keys().then(function (ks) {
-                    return Promise.all(ks.map(function (k) {
-                        return caches.delete(k);
-                    }));
-                }));
+                ps.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
             Promise.all(ps).then(done, done);
         }
         catch (e) {
@@ -2453,46 +1748,35 @@
         var el = $(id), h = document.createElement('span'), st = null, key = 'pxa_dock_' + id;
         h.className = 'rsz2';
         el.appendChild(h);
-        function ap(w, hh) {
-            if (w)
-                el.style.setProperty('width', w + 'px', 'important');
-            if (hh) {
-                el.style.setProperty('height', hh + 'px', 'important');
-                el.style.setProperty('overflow', 'auto', 'important');
-            }
-        }
+        function ap(w, hh) { if (w)
+            el.style.setProperty('width', w + 'px', 'important'); if (hh) {
+            el.style.setProperty('height', hh + 'px', 'important');
+            el.style.setProperty('overflow', 'auto', 'important');
+        } }
         try {
             var q = JSON.parse(localStorage.getItem(key) || 'null');
             if (q)
                 ap(q[0], q[1]);
         }
         catch (e) { }
-        h.addEventListener('pointerdown', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var r = lrect(el);
-            st = { id: e.pointerId, p: LP(e), w: r.width, h: r.height };
-            try {
-                h.setPointerCapture(e.pointerId);
-            }
-            catch (er) { }
-        });
+        h.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); var r = lrect(el); st = { id: e.pointerId, p: LP(e), w: r.width, h: r.height }; try {
+            h.setPointerCapture(e.pointerId);
+        }
+        catch (er) { } });
         h.addEventListener('pointermove', function (e) {
             if (!st || e.pointerId !== st.id)
                 return;
             var p = LP(e), mir = document.documentElement.classList.contains('mir'), dx = p[0] - st.p[0];
             ap(Math.max(120, Math.min(260, st.w + (mir ? dx : -dx))), Math.max(50, Math.min(VH() - 60, st.h + p[1] - st.p[1])));
         });
-        function up(e) {
-            if (st && e.pointerId === st.id) {
-                st = null;
-                var r = lrect(el);
-                try {
-                    localStorage.setItem(key, JSON.stringify([Math.round(r.width), Math.round(r.height)]));
-                }
-                catch (er) { }
+        function up(e) { if (st && e.pointerId === st.id) {
+            st = null;
+            var r = lrect(el);
+            try {
+                localStorage.setItem(key, JSON.stringify([Math.round(r.width), Math.round(r.height)]));
             }
-        }
+            catch (er) { }
+        } }
         h.addEventListener('pointerup', up);
         h.addEventListener('pointercancel', up);
     });
@@ -2502,26 +1786,19 @@
         g.id = 'joyGrip';
         g.textContent = '\u2725';
         w.appendChild(g);
-        function ap() {
-            w.style.transform = 'translate(' + JW[0] + 'px,' + JW[1] + 'px)';
-        }
+        function ap() { w.style.transform = 'translate(' + JW[0] + 'px,' + JW[1] + 'px)'; }
         try {
-            var q = JSON.parse(load('joyw', '') || 'null');
+            var q = JSON.parse(localStorage.getItem('pxa_joyw') || 'null');
             if (q) {
                 JW = q;
                 ap();
             }
         }
         catch (e) { }
-        g.addEventListener('pointerdown', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            st = { id: e.pointerId, p: LP(e), b: JW.slice() };
-            try {
-                g.setPointerCapture(e.pointerId);
-            }
-            catch (er) { }
-        });
+        g.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); st = { id: e.pointerId, p: LP(e), b: JW.slice() }; try {
+            g.setPointerCapture(e.pointerId);
+        }
+        catch (er) { } });
         g.addEventListener('pointermove', function (e) {
             if (!st || e.pointerId !== st.id)
                 return;
@@ -2539,37 +1816,23 @@
                 JW[1] -= r.top + r.height - VH();
             ap();
         });
-        function up(e) {
-            if (st && e.pointerId === st.id) {
-                st = null;
-                try {
-                    store('joyw', JSON.stringify(JW));
-                }
-                catch (er) { }
+        function up(e) { if (st && e.pointerId === st.id) {
+            st = null;
+            try {
+                localStorage.setItem('pxa_joyw', JSON.stringify(JW));
             }
-        }
+            catch (er) { }
+        } }
         g.addEventListener('pointerup', up);
         g.addEventListener('pointercancel', up);
         var old = $('panReset').onclick;
-        $('panReset').onclick = function () {
-            ['palbox', 'anim'].forEach(function (i) {
-                var x = $(i);
-                x.style.removeProperty('width');
-                x.style.removeProperty('height');
-                x.style.removeProperty('overflow');
-                try {
-                    localStorage.removeItem('pxa_dock_' + i);
-                }
-                catch (er) { }
-            });
-            JW = [0, 0];
-            ap();
-            try {
-                localStorage.removeItem('pxa_joyw');
-            }
-            catch (er) { }
-            old();
-        };
+        $('panReset').onclick = function () { ['palbox', 'anim'].forEach(function (i) { var x = $(i); x.style.removeProperty('width'); x.style.removeProperty('height'); x.style.removeProperty('overflow'); try {
+            localStorage.removeItem('pxa_dock_' + i);
+        }
+        catch (er) { } }); JW = [0, 0]; ap(); try {
+            localStorage.removeItem('pxa_joyw');
+        }
+        catch (er) { } old(); };
     })();
     /* لا يختفي المؤشر ولا العصا خارج الشاشة */
     function keepOn() {
@@ -2584,46 +1847,26 @@
     }
     var HIDE = true, lastUse = performance.now();
     try {
-        HIDE = load('hide', null) !== '0';
+        HIDE = localStorage.getItem('pxa_hide') !== '0';
     }
     catch (e) { }
-    function hideLbl() {
-        $('hideT').textContent = t(HIDE ? 'on' : 'off');
-        $('hideT').className = HIDE ? 'on' : '';
-    }
+    function hideLbl() { $('hideT').textContent = t(HIDE ? 'on' : 'off'); $('hideT').className = HIDE ? 'on' : ''; }
     setTimeout(hideLbl, 0);
-    $('hideT').onclick = function () {
-        HIDE = !HIDE;
-        store('hide', String(HIDE ? 1 : 0));
-        hideLbl();
-    };
-    ['pointerdown', 'pointermove'].forEach(function (ev) {
-        joy.addEventListener(ev, function () {
-            lastUse = performance.now();
-        });
-    });
-    setInterval(function () {
-        var idle = HIDE && jid === null && performance.now() - lastUse > 3000 && !held;
-        $('joyw').style.opacity = idle ? 0.14 : 1;
-        $('ptr').style.opacity = idle ? 0 : 1;
-    }, 300);
-    var moved0 = false;
-    function center0() {
-        if (moved0)
-            return;
-        var r = lrect(cv);
-        if (r.width > 0) {
-            ptx = r.left + r.width / 2;
-            pty = r.top + r.height / 2;
-            ptrShow();
-        }
+    $('hideT').onclick = function () { HIDE = !HIDE; try {
+        localStorage.setItem('pxa_hide', String(HIDE ? 1 : 0));
     }
-    [200, 600, 1500].forEach(function (d) {
-        setTimeout(center0, d);
-    });
-    joy.addEventListener('pointerdown', function () {
-        moved0 = true;
-    });
+    catch (e) { } hideLbl(); };
+    ['pointerdown', 'pointermove'].forEach(function (ev) { joy.addEventListener(ev, function () { lastUse = performance.now(); }); });
+    setInterval(function () { var idle = HIDE && jid === null && performance.now() - lastUse > 3000 && !held; $('joyw').style.opacity = idle ? 0.14 : 1; $('ptr').style.opacity = idle ? 0 : 1; }, 300);
+    var moved0 = false;
+    function center0() { if (moved0)
+        return; var r = lrect(cv); if (r.width > 0) {
+        ptx = r.left + r.width / 2;
+        pty = r.top + r.height / 2;
+        ptrShow();
+    } }
+    [200, 600, 1500].forEach(function (d) { setTimeout(center0, d); });
+    joy.addEventListener('pointerdown', function () { moved0 = true; });
     window.addEventListener('resize', keepOn);
     setInterval(keepOn, 1500);
     keepOn();
@@ -2644,7 +1887,7 @@
         if (pieOpen) {
             var ni = -1;
             if (mag > 0.5) {
-                var an = (Math.atan2(jy_, jx_) * 180) / Math.PI + 90;
+                var an = Math.atan2(jy_, jx_) * 180 / Math.PI + 90;
                 ni = Math.round((((an % 360) + 360) % 360) / 60) % 6;
             }
             if (ni !== pieIdx) {
@@ -2654,7 +1897,7 @@
             }
         }
         if (MM && mag > 0.09 && !pieOpen) {
-            var spp = ((SPD * 48 * Math.pow((mag - 0.09) / 0.91, 1.6)) / mag) * (pOver ? 0.4 : 1) * (PREC ? 0.35 : 1);
+            var spp = SPD * 48 * Math.pow((mag - 0.09) / 0.91, 1.6) / mag * (pOver ? 0.4 : 1) * (PREC ? 0.35 : 1);
             ptx = Math.max(0, Math.min(VW() - 25, ptx + jx_ * spp * dt));
             pty = Math.max(0, Math.min(VH() - 30, pty + jy_ * spp * dt));
             ptrShow();
@@ -2671,10 +1914,10 @@
             var rr = lrect(cv);
             pOver = ptx >= rr.left && ptx <= rr.left + rr.width && pty >= rr.top && pty <= rr.top + rr.height;
             if (pOver) {
-                curX = Math.max(0, Math.min(COLS - 1, ((ptx - rr.left) / rr.width) * COLS - 0.5));
-                curY = Math.max(0, Math.min(ROWS - 1, ((pty - rr.top) / rr.height) * ROWS - 0.5));
+                cx = Math.max(0, Math.min(W - 1, (ptx - rr.left) / rr.width * W - 0.5));
+                cy = Math.max(0, Math.min(H - 1, (pty - rr.top) / rr.height * H - 0.5));
             }
-            var nx2 = Math.round(curX), ny2 = Math.round(curY), dm2 = held || (AUTO === 1 ? 'd' : AUTO === 2 ? 'e' : null);
+            var nx2 = Math.round(cx), ny2 = Math.round(cy), dm2 = held || (AUTO === 1 ? 'd' : AUTO === 2 ? 'e' : null);
             if (pOver) {
                 if (AUTO && !held && !autoOn) {
                     autoOn = true;
@@ -2692,15 +1935,15 @@
             draw();
         }
         else if (mag > 0.09) {
-            var spj = (SPD * Math.pow((mag - 0.09) / 0.91, 1.05)) / mag;
-            curX = Math.max(0, Math.min(COLS - 1, curX + jx_ * spj * dt));
-            curY = Math.max(0, Math.min(ROWS - 1, curY + jy_ * spj * dt));
-            var nx = Math.round(curX), ny = Math.round(curY);
+            var spj = SPD * Math.pow((mag - 0.09) / 0.91, 1.05) / mag;
+            cx = Math.max(0, Math.min(W - 1, cx + jx_ * spj * dt));
+            cy = Math.max(0, Math.min(H - 1, cy + jy_ * spj * dt));
+            var nx = Math.round(cx), ny = Math.round(cy);
             if (AUTO && !held && !autoOn) {
                 autoOn = true;
                 snap();
-                lastX = Math.round(curX - jx_ * spj * dt);
-                lastY = Math.round(curY - jy_ * spj * dt);
+                lastX = Math.round(cx - jx_ * spj * dt);
+                lastY = Math.round(cy - jy_ * spj * dt);
                 put(lastX, lastY, AUTO === 2);
             }
             var dm = held || (AUTO === 1 ? 'd' : AUTO === 2 ? 'e' : null);
@@ -2728,151 +1971,76 @@
         var p = $('pal');
         p.innerHTML = '';
         $('curc').style.background = PAL[sel];
-        PAL.forEach(function (c, i) {
-            var b = document.createElement('button');
-            b.className = 'sw' + (i === sel ? ' on' : '');
-            b.style.background = c;
-            b.setAttribute('aria-label', 'لون ' + (i + 1));
-            b.onclick = function () {
-                sel = i;
-                pal();
-                colOpen(false);
-            };
-            p.appendChild(b);
-        });
+        PAL.forEach(function (c, i) { var b = document.createElement('button'); b.className = 'sw' + (i === sel ? ' on' : ''); b.style.background = c; b.setAttribute('aria-label', 'لون ' + (i + 1)); b.onclick = function () { sel = i; pal(); colOpen(false); }; p.appendChild(b); });
     }
-    $('addc').addEventListener('change', function () {
-        if (PAL.length < 52) {
-            PAL.push($('addc').value);
-            sel = PAL.length - 1;
-            pal();
-            colOpen(false);
-        }
-    });
+    $('addc').addEventListener('change', function () { if (PAL.length < 52) {
+        PAL.push($('addc').value);
+        sel = PAL.length - 1;
+        pal();
+        colOpen(false);
+    } });
     /* الأدوات */
-    $('undo').onclick = function () {
-        if (FL) {
-            selCancel();
+    $('undo').onclick = function () { if (FL) {
+        selCancel();
+        draw();
+        sfx('undo');
+        return;
+    } if (undo.length) {
+        var u = undo.pop();
+        if (u.f < frames.length) {
+            redoS.push({ f: u.f, g: frames[u.f].slice() });
+            frames[u.f] = u.g;
+            fi = u.f;
+            grid = frames[fi];
+            strip();
             draw();
             sfx('undo');
-            return;
         }
-        if (undo.length) {
-            var u = undo.pop();
-            if (u.f < frames.length) {
-                redoS.push({ f: u.f, g: frames[u.f].slice() });
-                frames[u.f] = u.g;
-                fi = u.f;
-                grid = frames[fi];
-                strip();
-                draw();
-                sfx('undo');
-            }
+    } };
+    $('redo').onclick = function () { if (redoS.length) {
+        var r = redoS.pop();
+        if (r.f < frames.length) {
+            undo.push({ f: r.f, g: frames[r.f].slice() });
+            frames[r.f] = r.g;
+            fi = r.f;
+            grid = frames[fi];
+            strip();
+            draw();
+            sfx('redo');
         }
-    };
-    $('redo').onclick = function () {
-        if (redoS.length) {
-            var r = redoS.pop();
-            if (r.f < frames.length) {
-                undo.push({ f: r.f, g: frames[r.f].slice() });
-                frames[r.f] = r.g;
-                fi = r.f;
-                grid = frames[fi];
-                strip();
-                draw();
-                sfx('redo');
-            }
-        }
-    };
-    $('at').onclick = function () {
-        TOOL = (TOOL + 1) % 7;
-        ANCHOR = null;
-        atLabel();
-        draw();
-    };
-    function togLabels() {
-        $('tSnd').textContent = t('sound') + ': ' + t(SND ? 'on' : 'off');
-        $('tVib').textContent = t('vib') + ': ' + t(VIB ? 'on' : 'off');
-        $('tGrid').textContent = t('grid') + ': ' + t(GRIDON ? 'on' : 'off');
-        $('tSnd').className = SND ? 'on' : '';
-        $('tVib').className = VIB ? 'on' : '';
-        $('tGrid').className = GRIDON ? 'on' : '';
-    }
-    $('tSnd').onclick = function () {
-        SND = !SND;
-        store('snd', SND ? 1 : 0);
-        togLabels();
-    };
-    $('tVib').onclick = function () {
-        VIB = !VIB;
-        store('vib', VIB ? 1 : 0);
-        togLabels();
-        vib(30);
-    };
-    $('tGrid').onclick = function () {
-        GRIDON = !GRIDON;
-        store('grid', GRIDON ? 1 : 0);
-        togLabels();
-        draw();
-    };
-    $('clear').onclick = function () {
-        snap();
-        for (var i = 0; i < grid.length; i++)
-            grid[i] = EMPTY;
-        draw();
-    };
+    } };
+    $('at').onclick = function () { AT = (AT + 1) % 7; AS = null; atLabel(); draw(); };
+    function togLabels() { $('tSnd').textContent = t('sound') + ': ' + t(SND ? 'on' : 'off'); $('tVib').textContent = t('vib') + ': ' + t(VIB ? 'on' : 'off'); $('tGrid').textContent = t('grid') + ': ' + t(GRIDON ? 'on' : 'off'); $('tSnd').className = SND ? 'on' : ''; $('tVib').className = VIB ? 'on' : ''; $('tGrid').className = GRIDON ? 'on' : ''; }
+    $('tSnd').onclick = function () { SND = !SND; store('snd', SND ? 1 : 0); togLabels(); };
+    $('tVib').onclick = function () { VIB = !VIB; store('vib', VIB ? 1 : 0); togLabels(); vib(30); };
+    $('tGrid').onclick = function () { GRIDON = !GRIDON; store('grid', GRIDON ? 1 : 0); togLabels(); draw(); };
+    $('clear').onclick = function () { snap(); for (var i = 0; i < grid.length; i++)
+        grid[i] = -1; draw(); };
     var sz = $('size');
-    SIZES.forEach(function (s, i) {
-        var o = document.createElement('option');
-        o.value = String(i);
-        o.textContent = s[0] + '×' + s[1];
-        sz.appendChild(o);
-    });
-    sz.onchange = function () {
-        var s = SIZES[sz.value];
-        setSize(s[0], s[1]);
-    };
+    SIZES.forEach(function (s, i) { var o = document.createElement('option'); o.value = String(i); o.textContent = s[0] + '×' + s[1]; sz.appendChild(o); });
+    sz.onchange = function () { var s = SIZES[sz.value]; setSize(s[0], s[1]); };
     var L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
     function toText() {
-        var out = '# ' + COLS + 'x' + ROWS + ' frames=' + frames.length + '\n';
-        frames.forEach(function (G, n) {
-            out += '# frame ' + (n + 1) + '\n';
-            for (var y = 0; y < ROWS; y++) {
-                var r = '';
-                for (var x = 0; x < COLS; x++) {
-                    var v = G[y * COLS + x];
-                    r += v < 0 ? '.' : L[v];
-                }
-                out += r + '\n';
+        var out = '# ' + W + 'x' + H + ' frames=' + frames.length + '\n';
+        frames.forEach(function (G, n) { out += '# frame ' + (n + 1) + '\n'; for (var y = 0; y < H; y++) {
+            var r = '';
+            for (var x = 0; x < W; x++) {
+                var v = G[y * W + x];
+                r += v < 0 ? '.' : L[v];
             }
-        });
-        out +=
-            '# ' +
-                PAL.map(function (c, i) {
-                    return L[i] + '=' + c;
-                }).join(' ') +
-                '\n';
+            out += r + '\n';
+        } });
+        out += '# ' + PAL.map(function (c, i) { return L[i] + '=' + c; }).join(' ') + '\n';
         return out;
     }
-    $('exp').onclick = function () {
-        $('txt').value = toText();
-    };
-    $('cp').onclick = function () {
-        var t = $('txt');
-        if (!t.value)
-            t.value = toText();
-        t.select();
-        try {
-            navigator.clipboard.writeText(t.value).catch(function () { });
-        }
-        catch (e) { }
-    };
+    $('exp').onclick = function () { $('txt').value = toText(); };
+    $('cp').onclick = function () { var t = $('txt'); if (!t.value)
+        t.value = toText(); t.select(); try {
+        navigator.clipboard.writeText(t.value).catch(function () { });
+    }
+    catch (e) { } };
     $('imp').onclick = function () {
-        var lines = $('txt')
-            .value.split('\n')
-            .map(function (q) {
-            return q.trim();
-        }), fr = [], cur = null, leg = null, i;
+        var lines = $('txt').value.split('\n').map(function (q) { return q.trim(); }), fr = [], cur = null, leg = null, i;
         for (i = 0; i < lines.length; i++) {
             var ln = lines[i];
             if (/^# frame/.test(ln)) {
@@ -2889,101 +2057,50 @@
             else if (/[A-Za-z]=#[0-9a-fA-F]{6}/.test(ln))
                 leg = ln;
         }
-        fr = fr.filter(function (f) {
-            return f.length;
-        });
+        fr = fr.filter(function (f) { return f.length; });
         if (!fr.length)
             return;
         var w = fr[0][0].length, h = fr[0].length;
         if (leg) {
             var m = leg.match(/[A-Za-z]=#[0-9a-fA-F]{6}/g);
             PAL = [];
-            m.forEach(function (q) {
-                PAL[L.indexOf(q[0])] = q.slice(2);
-            });
+            m.forEach(function (q) { PAL[L.indexOf(q[0])] = q.slice(2); });
             for (i = 0; i < PAL.length; i++)
                 if (!PAL[i])
                     PAL[i] = '#000000';
         }
-        COLS = w;
-        ROWS = h;
-        frames = fr.map(function (rows) {
-            var g = [];
-            for (var y = 0; y < ROWS; y++)
-                for (var x = 0; x < COLS; x++) {
-                    var ch = rows[y] ? rows[y][x] : '.';
-                    g.push(ch === '.' || ch === undefined ? EMPTY : Math.min(L.indexOf(ch), PAL.length - 1));
-                }
-            return g;
-        });
+        W = w;
+        H = h;
+        frames = fr.map(function (rows) { var g = []; for (var y = 0; y < H; y++)
+            for (var x = 0; x < W; x++) {
+                var ch = rows[y] ? rows[y][x] : '.';
+                g.push(ch === '.' || ch === undefined ? -1 : Math.min(L.indexOf(ch), PAL.length - 1));
+            } return g; });
         fi = 0;
         grid = frames[0];
         undo = [];
-        curX = (COLS - 1) / 2;
-        curY = (ROWS - 1) / 2;
+        cx = (W - 1) / 2;
+        cy = (H - 1) / 2;
         pal();
         strip();
         fit();
         draw();
     };
-    function playTick() {
-        pi = (pi + 1) % frames.length;
-        prev();
-        draw();
-        var bs = $('strip').children;
-        for (var i = 0; i < bs.length; i++)
-            bs[i].className = i === pi ? 'cur' : '';
-    }
+    function playTick() { pi = (pi + 1) % frames.length; prev(); draw(); var bs = $('strip').children; for (var i = 0; i < bs.length; i++)
+        bs[i].className = i === pi ? 'cur' : ''; }
     function strip() {
         var st = $('strip');
         if (!st)
             return;
         st.innerHTML = '';
-        frames.forEach(function (_f, i) {
-            var b = document.createElement('button');
-            b.textContent = String(i + 1);
-            b.className = i === fi ? 'cur' : '';
-            b.onclick = function () {
-                fi = i;
-                grid = frames[i];
-                strip();
-                draw();
-            };
-            st.appendChild(b);
-        });
+        frames.forEach(function (f, i) { var b = document.createElement('button'); b.textContent = String(i + 1); b.className = i === fi ? 'cur' : ''; b.onclick = function () { fi = i; grid = frames[i]; strip(); draw(); }; st.appendChild(b); });
     }
-    $('fAdd').onclick = function () {
-        sfx('frame');
-        var g = blankGrid();
-        frames.splice(fi + 1, 0, g);
-        fi++;
-        grid = g;
-        strip();
-        draw();
-    };
-    $('fCopy').onclick = function () {
-        var g = grid.slice();
-        frames.splice(fi + 1, 0, g);
-        fi++;
-        grid = g;
-        strip();
-        draw();
-    };
-    $('fDel').onclick = function () {
-        if (frames.length < 2)
-            return;
-        frames.splice(fi, 1);
-        fi = Math.max(0, fi - 1);
-        grid = frames[fi];
-        undo = [];
-        strip();
-        draw();
-    };
-    $('onion').onclick = function () {
-        onion = !onion;
-        $('onion').className = onion ? 'on' : '';
-        draw();
-    };
+    $('fAdd').onclick = function () { sfx('frame'); var g = []; for (var i = 0; i < W * H; i++)
+        g.push(-1); frames.splice(fi + 1, 0, g); fi++; grid = g; strip(); draw(); };
+    $('fCopy').onclick = function () { var g = grid.slice(); frames.splice(fi + 1, 0, g); fi++; grid = g; strip(); draw(); };
+    $('fDel').onclick = function () { if (frames.length < 2)
+        return; frames.splice(fi, 1); fi = Math.max(0, fi - 1); grid = frames[fi]; undo = []; strip(); draw(); };
+    $('onion').onclick = function () { onion = !onion; $('onion').className = onion ? 'on' : ''; draw(); };
     $('play').onclick = function () {
         playing = !playing;
         $('play').className = playing ? 'on' : '';
@@ -3001,265 +2118,15 @@
     /* اللغات: العربية، الإنجليزية، الكردية البادينية (بالحرف العربي) */
     var LANG = 'ar';
     var TR = {
-        ar: {
-            undo: 'تراجع',
-            clear: 'مسح',
-            touch: 'لمس',
-            draw: 'رسم',
-            erase: 'مسح',
-            rot: 'دوّر',
-            gear: 'إعدادات',
-            fCopy: 'نسخ',
-            fDel: 'حذف',
-            fPrev: 'قبل',
-            fNext: 'بعد',
-            flip: 'قلب',
-            onion: 'ظل',
-            play: 'تشغيل',
-            stop: 'إيقاف',
-            auto: 'رسم تلقائي',
-            on: 'تشغيل',
-            off: 'إيقاف',
-            bA: 'ارسم',
-            bB: 'امسح',
-            t_newc: 'لون جديد',
-            exm: 'تصدير',
-            t_exm: 'تصدير',
-            bclose: 'إغلاق',
-            mm: 'مؤشر',
-            libb: 'المكتبة',
-            t_lib: 'المكتبة',
-            lclose: 'إغلاق',
-            lsave: 'حفظ',
-            lnew: 'رسمة جديدة',
-            lopen: 'فتح',
-            ldel: 'حذف',
-            lph: 'اسم الرسمة',
-            lnm: 'رسمة',
-            lauto: 'آخر عمل (تلقائي)',
-            lempty: 'لا توجد رسومات محفوظة بعد.',
-            sheet: 'ورقة PNG للعبة',
-            pal32: 'ألوان اللعبة (32)',
-            redo: 'إعادة',
-            at_pen: 'قلم',
-            at_fill: 'تعبئة',
-            at_pick: 'قطارة',
-            at_line: 'خط',
-            at_rect: 'مستطيل',
-            at_rectf: 'مستطيل ممتلئ',
-            at_select: 'تحديد ونقل',
-            sound: 'صوت',
-            vib: 'اهتزاز',
-            grid: 'شبكة',
-            t_col: 'الألوان',
-            cclose: 'إغلاق',
-            t_set: 'الإعدادات',
-            gclose: 'إغلاق',
-            thLight: 'نهاري',
-            thDark: 'داكن',
-            t_lang: 'اللغة',
-            t_cur: 'شكل المؤشر',
-            o_box: 'مربع',
-            o_arrow: 'سهم',
-            joyReset: 'إعادة مكان العصا',
-            t_hint: 'لتحريك العصا: اضغط عليها دون تحريك ثلاث ثوانٍ ثم اسحبها.',
-            panReset: 'إعادة ترتيب القوائم',
-            tt_col: 'الألوان',
-            tt_anim: 'الأنيميشن',
-            expng: 'صورة (احفظها بالضغط المطول)',
-            t_mir: 'اليد اليسرى: القاعدة على الجانب الآخر',
-            t_pp: 'تنظيف الخط تلقائياً (قد يحذف بكسلات)',
-            t_dp: 'أسهم بدل العصا',
-            t_hide: 'إخفاء العصا والمؤشر عند عدم الاستعمال',
-            t_fps: 'سرعة الأنيميشن',
-            t_bg: 'لون الرسم',
-            t_spd: 'سرعة العصا',
-            t_usz: 'حجم العصا والأزرار',
-            exp: 'تصدير كنص',
-            cp: 'نسخ النص',
-            imp: 'استيراد من النص',
-            t_note: '«.» شفاف، وكل حرف آخر لون من القائمة في آخر النص.',
-            ph: 'هنا يظهر النص عند التصدير. للاستيراد الصق النص هنا واضغط استيراد.'
-        },
-        en: {
-            undo: 'Undo',
-            clear: 'Clear',
-            touch: 'Touch',
-            draw: 'Draw',
-            erase: 'Erase',
-            rot: 'Rotate',
-            gear: 'Settings',
-            fCopy: 'Copy',
-            fDel: 'Delete',
-            fPrev: 'Back',
-            fNext: 'Next',
-            flip: 'Flip',
-            onion: 'Onion',
-            play: 'Play',
-            stop: 'Stop',
-            auto: 'Auto draw',
-            on: 'On',
-            off: 'Off',
-            bA: 'Draw',
-            bB: 'Erase',
-            t_newc: 'New color',
-            exm: 'Export',
-            t_exm: 'Export',
-            bclose: 'Close',
-            mm: 'Pointer',
-            libb: 'Library',
-            t_lib: 'Library',
-            lclose: 'Close',
-            lsave: 'Save',
-            lnew: 'New drawing',
-            lopen: 'Open',
-            ldel: 'Delete',
-            lph: 'Drawing name',
-            lnm: 'Drawing',
-            lauto: 'Last work (auto)',
-            lempty: 'No saved drawings yet.',
-            sheet: 'PNG sheet for the game',
-            pal32: 'Game colors (32)',
-            redo: 'Redo',
-            at_pen: 'Pen',
-            at_fill: 'Fill',
-            at_pick: 'Picker',
-            at_line: 'Line',
-            at_rect: 'Rectangle',
-            at_rectf: 'Filled rectangle',
-            at_select: 'Select & move',
-            sound: 'Sound',
-            vib: 'Vibration',
-            grid: 'Grid',
-            t_col: 'Colors',
-            cclose: 'Close',
-            t_set: 'Settings',
-            gclose: 'Close',
-            thLight: 'Light',
-            thDark: 'Dark',
-            t_lang: 'Language',
-            t_cur: 'Cursor shape',
-            o_box: 'Square',
-            o_arrow: 'Arrow',
-            joyReset: 'Reset joystick position',
-            t_hint: 'To move the joystick: press and hold it still for three seconds, then drag.',
-            panReset: 'Reset menu layout',
-            tt_col: 'Colors',
-            tt_anim: 'Animation',
-            expng: 'Image (long-press to save)',
-            t_mir: 'Left-handed: base on the other side',
-            t_pp: 'Auto line cleanup (may remove pixels)',
-            t_dp: 'Arrows instead of joystick',
-            t_hide: 'Hide joystick and pointer when idle',
-            t_fps: 'Animation speed',
-            t_bg: 'Canvas color',
-            t_spd: 'Joystick speed',
-            t_usz: 'Joystick and button size',
-            exp: 'Export as text',
-            cp: 'Copy text',
-            imp: 'Import from text',
-            t_note: '"." is transparent; every other letter is a color from the list at the end.',
-            ph: 'The text appears here on export. To import, paste the text here and press Import.'
-        },
-        ku: {
-            undo: 'پاشڤە',
-            clear: 'هەمی ژێببە',
-            touch: 'دەست',
-            draw: 'بکێشە',
-            erase: 'ژێببە',
-            rot: 'ڤەگێڕە',
-            gear: 'ڕێکخستن',
-            fCopy: 'کوپی',
-            fDel: 'ژێببە',
-            fPrev: 'بەری',
-            fNext: 'پاشی',
-            flip: 'ئاڤەژە',
-            onion: 'سێبەر',
-            play: 'لێبدە',
-            stop: 'ڕاوەستە',
-            auto: 'کێشانا خۆکار',
-            on: 'کارا',
-            off: 'ناکارا',
-            bA: 'بکێشە',
-            bB: 'ژێببە',
-            t_newc: 'ڕەنگێ نوی',
-            exm: 'دەرهێنان',
-            t_exm: 'دەرهێنان',
-            bclose: 'دابخە',
-            mm: 'نیشاندەر',
-            libb: 'کتێبخانە',
-            t_lib: 'کتێبخانە',
-            lclose: 'دابخە',
-            lsave: 'تۆمار بکە',
-            lnew: 'ڕەسمەکێ نوی',
-            lopen: 'ڤەکە',
-            ldel: 'ژێببە',
-            lph: 'ناڤێ ڕەسمێ',
-            lnm: 'ڕەسم',
-            lauto: 'کارێ دوماهیێ (خۆکار)',
-            lempty: 'هێشتا ڕەسمەک نەهاتیە تۆمارکرن.',
-            sheet: 'وەرەقا PNG بۆ یارییێ',
-            pal32: 'ڕەنگێن یارییێ (32)',
-            redo: 'دووبارە',
-            at_pen: 'پێنووس',
-            at_fill: 'پڕکرن',
-            at_pick: 'ڕەنگ هەلگرە',
-            at_line: 'هێل',
-            at_rect: 'چوارگۆشە',
-            at_rectf: 'چوارگۆشا پڕ',
-            at_select: 'هەلبژێرە',
-            sound: 'دەنگ',
-            vib: 'لەرزین',
-            grid: 'تۆر',
-            t_col: 'ڕەنگ',
-            cclose: 'دابخە',
-            t_set: 'ڕێکخستن',
-            gclose: 'دابخە',
-            thLight: 'ڕووناک',
-            thDark: 'تاری',
-            t_lang: 'زمان',
-            t_cur: 'شێوا نیشاندەری',
-            o_box: 'چوارگۆشە',
-            o_arrow: 'تیر',
-            joyReset: 'جۆیستیکێ بگەڕێنە جهێ خۆ',
-            t_hint: 'بۆ هەژاندنا جۆیستیکێ: سێ چرکەیان پێوە بگرە بێی هەژاندن و پاشی ڕاکێشە.',
-            panReset: 'ڕێکخستنا لیستان ڤەگەڕینە',
-            tt_col: 'ڕەنگ',
-            tt_anim: 'ئەنیمەیشن',
-            expng: 'وێنە (دریژ بگرە بۆ تۆمارکرنێ)',
-            t_mir: 'ل ڕاست و چەپێ ڤەگەڕینە',
-            t_pp: 'پیکسێلا تەمام (هێلان پاقژ دکەت)',
-            t_dp: 'تیر ل جهێ جۆیستیکێ',
-            t_hide: 'جۆیستیک و نیشاندەر بشێرە ئەگەر بکار نەهاتین',
-            t_fps: 'خێرایا ئەنیمەیشنێ',
-            t_bg: 'ڕەنگێ کێشانێ',
-            t_spd: 'خێرایا جۆیستیکێ',
-            t_usz: 'مەزناهیا جۆیستیک و دوگمەیان',
-            exp: 'دەرهێنان وەک تێکست',
-            cp: 'کوپیکرنا تێکستێ',
-            imp: 'هێنان ژ تێکستێ',
-            t_note: '«.» شەفافە، و هەر پیتەکێ دی ڕەنگەکە ژ لیستا ل دوماهیێ.',
-            ph: 'تێکست ل ڤێرە دیار دبیت دەمێ دەردهێنی. بۆ هێنانێ، تێکستێ ل ڤێرە بنڤێسە و هێنان بکە.'
-        }
+        ar: { undo: 'تراجع', clear: 'مسح', touch: 'لمس', draw: 'رسم', erase: 'مسح', rot: 'دوّر', gear: 'إعدادات', fCopy: 'نسخ', fDel: 'حذف', fPrev: 'قبل', fNext: 'بعد', flip: 'قلب', onion: 'ظل', play: 'تشغيل', stop: 'إيقاف', auto: 'رسم تلقائي', on: 'تشغيل', off: 'إيقاف', bA: 'ارسم', bB: 'امسح', t_newc: 'لون جديد', exm: 'تصدير', t_exm: 'تصدير', bclose: 'إغلاق', mm: 'مؤشر', libb: 'المكتبة', t_lib: 'المكتبة', lclose: 'إغلاق', lsave: 'حفظ', lnew: 'رسمة جديدة', lopen: 'فتح', ldel: 'حذف', lph: 'اسم الرسمة', lnm: 'رسمة', lauto: 'آخر عمل (تلقائي)', lempty: 'لا توجد رسومات محفوظة بعد.', sheet: 'ورقة PNG للعبة', pal32: 'ألوان اللعبة (32)', redo: 'إعادة', at_pen: 'قلم', at_fill: 'تعبئة', at_pick: 'قطارة', at_line: 'خط', at_rect: 'مستطيل', at_rectf: 'مستطيل ممتلئ', at_select: 'تحديد ونقل', sound: 'صوت', vib: 'اهتزاز', grid: 'شبكة', t_col: 'الألوان', cclose: 'إغلاق', t_set: 'الإعدادات', gclose: 'إغلاق', thLight: 'نهاري', thDark: 'داكن', t_lang: 'اللغة', t_cur: 'شكل المؤشر', o_box: 'مربع', o_arrow: 'سهم', joyReset: 'إعادة مكان العصا', t_hint: 'لتحريك العصا: اضغط عليها دون تحريك ثلاث ثوانٍ ثم اسحبها.', panReset: 'إعادة ترتيب القوائم', tt_col: 'الألوان', tt_anim: 'الأنيميشن', expng: 'صورة (احفظها بالضغط المطول)', t_mir: 'اليد اليسرى: القاعدة على الجانب الآخر', t_pp: 'تنظيف الخط تلقائياً (قد يحذف بكسلات)', t_dp: 'أسهم بدل العصا', t_hide: 'إخفاء العصا والمؤشر عند عدم الاستعمال', t_fps: 'سرعة الأنيميشن', t_bg: 'لون الرسم', t_spd: 'سرعة العصا', t_usz: 'حجم العصا والأزرار', exp: 'تصدير كنص', cp: 'نسخ النص', imp: 'استيراد من النص', t_note: '«.» شفاف، وكل حرف آخر لون من القائمة في آخر النص.', ph: 'هنا يظهر النص عند التصدير. للاستيراد الصق النص هنا واضغط استيراد.' },
+        en: { undo: 'Undo', clear: 'Clear', touch: 'Touch', draw: 'Draw', erase: 'Erase', rot: 'Rotate', gear: 'Settings', fCopy: 'Copy', fDel: 'Delete', fPrev: 'Back', fNext: 'Next', flip: 'Flip', onion: 'Onion', play: 'Play', stop: 'Stop', auto: 'Auto draw', on: 'On', off: 'Off', bA: 'Draw', bB: 'Erase', t_newc: 'New color', exm: 'Export', t_exm: 'Export', bclose: 'Close', mm: 'Pointer', libb: 'Library', t_lib: 'Library', lclose: 'Close', lsave: 'Save', lnew: 'New drawing', lopen: 'Open', ldel: 'Delete', lph: 'Drawing name', lnm: 'Drawing', lauto: 'Last work (auto)', lempty: 'No saved drawings yet.', sheet: 'PNG sheet for the game', pal32: 'Game colors (32)', redo: 'Redo', at_pen: 'Pen', at_fill: 'Fill', at_pick: 'Picker', at_line: 'Line', at_rect: 'Rectangle', at_rectf: 'Filled rectangle', at_select: 'Select & move', sound: 'Sound', vib: 'Vibration', grid: 'Grid', t_col: 'Colors', cclose: 'Close', t_set: 'Settings', gclose: 'Close', thLight: 'Light', thDark: 'Dark', t_lang: 'Language', t_cur: 'Cursor shape', o_box: 'Square', o_arrow: 'Arrow', joyReset: 'Reset joystick position', t_hint: 'To move the joystick: press and hold it still for three seconds, then drag.', panReset: 'Reset menu layout', tt_col: 'Colors', tt_anim: 'Animation', expng: 'Image (long-press to save)', t_mir: 'Left-handed: base on the other side', t_pp: 'Auto line cleanup (may remove pixels)', t_dp: 'Arrows instead of joystick', t_hide: 'Hide joystick and pointer when idle', t_fps: 'Animation speed', t_bg: 'Canvas color', t_spd: 'Joystick speed', t_usz: 'Joystick and button size', exp: 'Export as text', cp: 'Copy text', imp: 'Import from text', t_note: '"." is transparent; every other letter is a color from the list at the end.', ph: 'The text appears here on export. To import, paste the text here and press Import.' },
+        ku: { undo: 'پاشڤە', clear: 'هەمی ژێببە', touch: 'دەست', draw: 'بکێشە', erase: 'ژێببە', rot: 'ڤەگێڕە', gear: 'ڕێکخستن', fCopy: 'کوپی', fDel: 'ژێببە', fPrev: 'بەری', fNext: 'پاشی', flip: 'ئاڤەژە', onion: 'سێبەر', play: 'لێبدە', stop: 'ڕاوەستە', auto: 'کێشانا خۆکار', on: 'کارا', off: 'ناکارا', bA: 'بکێشە', bB: 'ژێببە', t_newc: 'ڕەنگێ نوی', exm: 'دەرهێنان', t_exm: 'دەرهێنان', bclose: 'دابخە', mm: 'نیشاندەر', libb: 'کتێبخانە', t_lib: 'کتێبخانە', lclose: 'دابخە', lsave: 'تۆمار بکە', lnew: 'ڕەسمەکێ نوی', lopen: 'ڤەکە', ldel: 'ژێببە', lph: 'ناڤێ ڕەسمێ', lnm: 'ڕەسم', lauto: 'کارێ دوماهیێ (خۆکار)', lempty: 'هێشتا ڕەسمەک نەهاتیە تۆمارکرن.', sheet: 'وەرەقا PNG بۆ یارییێ', pal32: 'ڕەنگێن یارییێ (32)', redo: 'دووبارە', at_pen: 'پێنووس', at_fill: 'پڕکرن', at_pick: 'ڕەنگ هەلگرە', at_line: 'هێل', at_rect: 'چوارگۆشە', at_rectf: 'چوارگۆشا پڕ', at_select: 'هەلبژێرە', sound: 'دەنگ', vib: 'لەرزین', grid: 'تۆر', t_col: 'ڕەنگ', cclose: 'دابخە', t_set: 'ڕێکخستن', gclose: 'دابخە', thLight: 'ڕووناک', thDark: 'تاری', t_lang: 'زمان', t_cur: 'شێوا نیشاندەری', o_box: 'چوارگۆشە', o_arrow: 'تیر', joyReset: 'جۆیستیکێ بگەڕێنە جهێ خۆ', t_hint: 'بۆ هەژاندنا جۆیستیکێ: سێ چرکەیان پێوە بگرە بێی هەژاندن و پاشی ڕاکێشە.', panReset: 'ڕێکخستنا لیستان ڤەگەڕینە', tt_col: 'ڕەنگ', tt_anim: 'ئەنیمەیشن', expng: 'وێنە (دریژ بگرە بۆ تۆمارکرنێ)', t_mir: 'ل ڕاست و چەپێ ڤەگەڕینە', t_pp: 'پیکسێلا تەمام (هێلان پاقژ دکەت)', t_dp: 'تیر ل جهێ جۆیستیکێ', t_hide: 'جۆیستیک و نیشاندەر بشێرە ئەگەر بکار نەهاتین', t_fps: 'خێرایا ئەنیمەیشنێ', t_bg: 'ڕەنگێ کێشانێ', t_spd: 'خێرایا جۆیستیکێ', t_usz: 'مەزناهیا جۆیستیک و دوگمەیان', exp: 'دەرهێنان وەک تێکست', cp: 'کوپیکرنا تێکستێ', imp: 'هێنان ژ تێکستێ', t_note: '«.» شەفافە، و هەر پیتەکێ دی ڕەنگەکە ژ لیستا ل دوماهیێ.', ph: 'تێکست ل ڤێرە دیار دبیت دەمێ دەردهێنی. بۆ هێنانێ، تێکستێ ل ڤێرە بنڤێسە و هێنان بکە.' }
     };
-    function t(k) {
-        return (TR[LANG] && TR[LANG][k]) || TR.ar[k] || k;
-    }
+    function t(k) { return (TR[LANG] && TR[LANG][k]) || TR.ar[k] || k; }
     function applyLang() {
         document.documentElement.lang = LANG;
-        Object.keys(TR.ar).forEach(function (k) {
-            var el = $(k);
-            if (el &&
-                k !== 'ph' &&
-                k !== 'auto' &&
-                k !== 'on' &&
-                k !== 'off' &&
-                k !== 'play' &&
-                k !== 'stop' &&
-                k !== 'draw' &&
-                k !== 'erase')
-                el.textContent = t(k);
-        });
+        Object.keys(TR.ar).forEach(function (k) { var el = $(k); if (el && k !== 'ph' && k !== 'auto' && k !== 'on' && k !== 'off' && k !== 'play' && k !== 'stop' && k !== 'draw' && k !== 'erase')
+            el.textContent = t(k); });
         $('tool').textContent = t(touchErase ? 'erase' : 'draw');
         $('play').textContent = t(playing ? 'stop' : 'play');
         autoLabel();
@@ -3270,181 +2137,65 @@
         if ($('lib').classList.contains('open'))
             renderLib();
     }
-    function store(k, v) {
-        try {
-            localStorage.setItem('pxa_' + k, v);
-        }
-        catch (e) { }
+    function store(k, v) { try {
+        localStorage.setItem('pxa_' + k, v);
     }
-    function load(k, d) {
-        try {
-            var v = localStorage.getItem('pxa_' + k);
-            return v === null ? d : v;
-        }
-        catch (e) {
-            return d;
-        }
+    catch (e) { } }
+    function load(k, d) { try {
+        var v = localStorage.getItem('pxa_' + k);
+        return v === null ? d : v;
     }
-    function theme(d) {
-        document.body.classList.toggle('dark', d);
-        store('dark', d ? 1 : 0);
-    }
-    function setOpen(o) {
-        $('lib').classList.remove('open');
-        $('colp').classList.remove('open');
-        $('set').classList.toggle('open', o);
-        $('bot').classList.remove('open');
-        $('bk').classList.toggle('open', o);
-        updModal();
-        fit();
-        draw();
-    }
-    function updModal() {
-        $('wrap').classList.toggle('modal', $('set').classList.contains('open') ||
-            $('colp').classList.contains('open') ||
-            $('bot').classList.contains('open') ||
-            $('lib').classList.contains('open'));
-    }
-    function colOpen(o) {
-        $('colp').classList.toggle('open', o);
-        if (o) {
-            $('set').classList.remove('open');
-            $('bot').classList.remove('open');
-            $('lib').classList.remove('open');
-        }
-        $('bk').classList.toggle('open', o);
-        updModal();
-    }
-    $('curc').onclick = function () {
-        colOpen(true);
-    };
-    $('cclose').onclick = function () {
-        colOpen(false);
-    };
-    function exOpen(o) {
-        $('lib').classList.remove('open');
-        $('colp').classList.remove('open');
-        $('bot').classList.toggle('open', o);
+    catch (e) {
+        return d;
+    } }
+    function theme(d) { document.body.classList.toggle('dark', d); store('dark', d ? 1 : 0); }
+    function setOpen(o) { $('lib').classList.remove('open'); $('colp').classList.remove('open'); $('set').classList.toggle('open', o); $('bot').classList.remove('open'); $('bk').classList.toggle('open', o); updModal(); fit(); draw(); }
+    function updModal() { $('wrap').classList.toggle('modal', $('set').classList.contains('open') || $('colp').classList.contains('open') || $('bot').classList.contains('open') || $('lib').classList.contains('open')); }
+    function colOpen(o) { $('colp').classList.toggle('open', o); if (o) {
         $('set').classList.remove('open');
-        $('bk').classList.toggle('open', o);
-        updModal();
-        prev();
+        $('bot').classList.remove('open');
+        $('lib').classList.remove('open');
+    } $('bk').classList.toggle('open', o); updModal(); }
+    $('curc').onclick = function () { colOpen(true); };
+    $('cclose').onclick = function () { colOpen(false); };
+    function exOpen(o) { $('lib').classList.remove('open'); $('colp').classList.remove('open'); $('bot').classList.toggle('open', o); $('set').classList.remove('open'); $('bk').classList.toggle('open', o); updModal(); prev(); }
+    $('exm').onclick = function () { exOpen(true); $('exp').click(); };
+    $('bclose').onclick = function () { exOpen(false); };
+    $('gear').onclick = function () { setOpen(!$('set').classList.contains('open')); };
+    $('bk').addEventListener('pointerdown', function (e) { e.preventDefault(); setOpen(false); exOpen(false); colOpen(false); libOpen(false); });
+    $('rot').onclick = function () { ORI = isLand() ? 'p' : 'l'; store('ori', ORI); fit(); draw(); };
+    $('joyReset').onclick = function () { JO = [0, 0]; joyPos(); try {
+        localStorage.removeItem('pxa_joyo');
     }
-    $('exm').onclick = function () {
-        exOpen(true);
-        $('exp').click();
-    };
-    $('bclose').onclick = function () {
-        exOpen(false);
-    };
-    $('gear').onclick = function () {
-        setOpen(!$('set').classList.contains('open'));
-    };
-    $('bk').addEventListener('pointerdown', function (e) {
-        e.preventDefault();
-        setOpen(false);
-        exOpen(false);
-        colOpen(false);
-        libOpen(false);
-    });
-    $('rot').onclick = function () {
-        ORI = isLand() ? 'p' : 'l';
-        store('ori', ORI);
-        fit();
-        draw();
-    };
-    $('joyReset').onclick = function () {
-        JO = [0, 0];
-        joyPos();
-        try {
-            localStorage.removeItem('pxa_joyo');
-        }
-        catch (e) { }
-    };
-    $('auto').onclick = function () {
-        AUTO = (AUTO + 1) % 3;
-        autoOn = false;
-        autoLabel();
-    };
-    function autoLabel() {
-        $('auto').textContent = t('auto') + ': ' + t(AUTO === 0 ? 'off' : AUTO === 1 ? 'draw' : 'erase');
-        $('auto').className = AUTO ? 'on' : '';
-        $('bA').classList.toggle('mode', AUTO === 1);
-        $('bB').classList.toggle('mode', AUTO === 2);
-    }
-    $('fps').oninput = function () {
-        fps = +$('fps').value;
-        store('fps', fps);
-        if (playing) {
-            clearInterval(ptimer);
-            ptimer = setInterval(playTick, 1000 / fps);
-        }
-    };
-    function moveFrame(d) {
-        var j = fi + d;
-        if (j < 0 || j >= frames.length)
-            return;
-        var t = frames[fi];
-        frames[fi] = frames[j];
-        frames[j] = t;
-        fi = j;
-        grid = frames[fi];
-        undo = [];
-        strip();
-        draw();
-    }
-    $('fPrev').onclick = function () {
-        moveFrame(-1);
-    };
-    $('fNext').onclick = function () {
-        moveFrame(1);
-    };
-    $('flip').onclick = function () {
-        snap();
-        for (var y = 0; y < ROWS; y++)
-            for (var x = 0; x < COLS >> 1; x++) {
-                var a = y * COLS + x, b = y * COLS + (COLS - 1 - x), t = grid[a];
-                grid[a] = grid[b];
-                grid[b] = t;
-            }
-        draw();
-    };
-    $('gclose').onclick = function () {
-        setOpen(false);
-    };
-    $('lang').onchange = function () {
-        LANG = $('lang').value;
-        store('lang', LANG);
-        applyLang();
-        fit();
-        draw();
-    };
-    $('thLight').onclick = function () {
-        theme(false);
-    };
-    $('thDark').onclick = function () {
-        theme(true);
-    };
+    catch (e) { } };
+    $('auto').onclick = function () { AUTO = (AUTO + 1) % 3; autoOn = false; autoLabel(); };
+    function autoLabel() { $('auto').textContent = t('auto') + ': ' + t(AUTO === 0 ? 'off' : AUTO === 1 ? 'draw' : 'erase'); $('auto').className = AUTO ? 'on' : ''; $('bA').classList.toggle('mode', AUTO === 1); $('bB').classList.toggle('mode', AUTO === 2); }
+    $('fps').oninput = function () { fps = +$('fps').value; store('fps', fps); if (playing) {
+        clearInterval(ptimer);
+        ptimer = setInterval(playTick, 1000 / fps);
+    } };
+    function moveFrame(d) { var j = fi + d; if (j < 0 || j >= frames.length)
+        return; var t = frames[fi]; frames[fi] = frames[j]; frames[j] = t; fi = j; grid = frames[fi]; undo = []; strip(); draw(); }
+    $('fPrev').onclick = function () { moveFrame(-1); };
+    $('fNext').onclick = function () { moveFrame(1); };
+    $('flip').onclick = function () { snap(); for (var y = 0; y < H; y++)
+        for (var x = 0; x < W >> 1; x++) {
+            var a = y * W + x, b = y * W + (W - 1 - x), t = grid[a];
+            grid[a] = grid[b];
+            grid[b] = t;
+        } draw(); };
+    $('gclose').onclick = function () { setOpen(false); };
+    $('lang').onchange = function () { LANG = $('lang').value; store('lang', LANG); applyLang(); fit(); draw(); };
+    $('thLight').onclick = function () { theme(false); };
+    $('thDark').onclick = function () { theme(true); };
     $('bgc').value = BGI;
-    $('bgc').onchange = function () {
-        BGI = +$('bgc').value;
-        store('bg', String(BGI));
-        draw();
-    };
-    $('spd').oninput = function () {
-        SPD = +$('spd').value;
-        store('spd2', SPD);
-    };
-    $('cur').onchange = function () {
-        CUR = $('cur').value;
-        store('cur2', CUR);
-        draw();
-    };
-    $('usz').oninput = function () {
-        store('usz', $('usz').value);
-        fit();
-        draw();
-    };
+    $('bgc').onchange = function () { BGI = +$('bgc').value; try {
+        localStorage.setItem('pxa_bg', String(BGI));
+    }
+    catch (e) { } draw(); };
+    $('spd').oninput = function () { SPD = +$('spd').value; store('spd2', SPD); };
+    $('cur').onchange = function () { CUR = $('cur').value; store('cur2', CUR); draw(); };
+    $('usz').oninput = function () { store('usz', $('usz').value); fit(); draw(); };
     SND = load('snd', 1) == 1;
     VIB = load('vib', 1) == 1;
     GRIDON = load('grid', 1) == 1;
@@ -3472,13 +2223,13 @@
         }
         var k = e.key;
         if (k === 'ArrowLeft')
-            curX = Math.max(0, curX - 1);
+            cx = Math.max(0, cx - 1);
         else if (k === 'ArrowRight')
-            curX = Math.min(COLS - 1, curX + 1);
+            cx = Math.min(W - 1, cx + 1);
         else if (k === 'ArrowUp')
-            curY = Math.max(0, curY - 1);
+            cy = Math.max(0, cy - 1);
         else if (k === 'ArrowDown')
-            curY = Math.min(ROWS - 1, curY + 1);
+            cy = Math.min(H - 1, cy + 1);
         else if (k === ' ') {
             press('d');
             release();
@@ -3495,61 +2246,39 @@
     /* شبكة أمان: عند أي خطأ نحفظ الرسمة ونعرض رسالة صغيرة بدل أن يتوقف كل شيء */
     var errShown = false;
     window.addEventListener('error', function () {
-        store('proj', JSON.stringify(projObj()));
+        try {
+            localStorage.setItem('pxa_proj', JSON.stringify(projObj()));
+        }
+        catch (e) { }
         if (errShown)
             return;
         errShown = true;
         try {
             var eb = document.createElement('div');
             eb.textContent = 'حصل خطأ بسيط. رسمتك محفوظة. إذا توقف شيء، أعد فتح التطبيق. (اضغط لإخفاء)';
-            eb.style.cssText =
-                'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#3a1010;color:#fff;border:2px solid #e04a38;border-radius:12px;padding:8px 12px;font-size:14px;text-align:center';
-            eb.onclick = function () {
-                eb.remove();
-            };
+            eb.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#3a1010;color:#fff;border:2px solid #e04a38;border-radius:12px;padding:8px 12px;font-size:14px;text-align:center';
+            eb.onclick = function () { eb.remove(); };
             $('wrap').appendChild(eb);
-            setTimeout(function () {
-                eb.remove();
-            }, 12000);
+            setTimeout(function () { eb.remove(); }, 12000);
         }
         catch (e) { }
     });
     var rzT = 0;
-    function refit() {
-        clearTimeout(rzT);
-        rzT = setTimeout(function () {
-            fit();
-            draw();
-        }, 180);
-    }
+    function refit() { clearTimeout(rzT); rzT = setTimeout(function () { fit(); draw(); }, 180); }
     window.addEventListener('resize', refit);
     window.addEventListener('orientationchange', refit);
     window.addEventListener('pageshow', refit);
-    document.addEventListener('visibilitychange', function () {
-        if (!document.hidden)
-            refit();
-    });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden)
+        refit(); });
     if (window.visualViewport)
         window.visualViewport.addEventListener('resize', refit);
-    [400, 1200, 2500].forEach(function (d) {
-        setTimeout(refit, d);
-    });
-    window.__app = {
-        ptr: function (x, y) {
-            ptx = x;
-            pty = y;
-            ptrShow();
-        },
-        grid: function () {
-            return grid.slice();
-        },
-        text: toText
-    };
+    [400, 1200, 2500].forEach(function (d) { setTimeout(refit, d); });
+    window.__app = { ptr: function (x, y) { ptx = x; pty = y; ptrShow(); }, grid: function () { return grid.slice(); }, text: toText };
     newGrid();
     pal();
     fit();
     try {
-        var sp0 = JSON.parse(load('proj', '') || 'null');
+        var sp0 = JSON.parse(localStorage.getItem('pxa_proj') || 'null');
         if (sp0)
             loadProj(sp0);
     }
@@ -3564,10 +2293,7 @@
 })();
 (function () {
     var c = document.getElementById('logo'), g = c.getContext('2d'), look = 0, taps = 0;
-    function rc(x, y, w, h, col) {
-        g.fillStyle = col;
-        g.fillRect(x - 2, y - 1, w, h);
-    }
+    function rc(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x - 2, y - 1, w, h); }
     function head(bl) {
         g.clearRect(0, 0, 7, 7);
         rc(2, 2, 7, 5, '#0a090d');
@@ -3582,12 +2308,7 @@
         rc(8 + ex, 5, 1, 1, bl ? '#000' : '#f4f4f4');
     }
     head(false);
-    setInterval(function () {
-        head(true);
-        setTimeout(function () {
-            head(false);
-        }, 150);
-    }, 3000);
+    setInterval(function () { head(true); setTimeout(function () { head(false); }, 150); }, 3000);
     c.addEventListener('click', function () {
         taps++;
         look = taps % 2;
