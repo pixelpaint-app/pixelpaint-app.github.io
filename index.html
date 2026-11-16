@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05070a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>مرسام البكسل</title>
+<meta name="description" content="محرر رسم بكسل مجاني للجوال. نسخة تجريبية.">
+<style>
+:root{--bg:#05070a;--card:#0e131a;--line:#222c3a;--fg:#e8edf3;--dim:#8d9bb0;--acc:#f0a830;--blue:#3a9be0}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.7 system-ui,"Segoe UI",Tahoma,sans-serif}
+.w{max-width:520px;margin:0 auto;padding:28px max(18px,env(safe-area-inset-right)) 40px max(18px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:18px}
+.top{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.top img{width:96px;height:96px;border-radius:22px;image-rendering:pixelated}
+h1{margin:0;font-size:30px}
+.tag{display:inline-block;background:#2a1f08;color:var(--acc);border:1px solid #5a4210;border-radius:99px;padding:2px 14px;font-size:14px}
+p{margin:0;color:var(--dim)}
+.btn{display:block;width:100%;text-align:center;text-decoration:none;border:0;cursor:pointer;font:inherit;font-weight:700;padding:16px;border-radius:16px}
+.go{background:var(--acc);color:#1a1204;font-size:20px}
+.inst{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.card h2{margin:0 0 6px;font-size:18px}
+.card ol{margin:6px 0 0;padding-inline-start:22px;color:var(--dim)}
+.card li{margin:4px 0}
+.card b{color:var(--fg)}
+.note{border-color:#5a4210}
+.foot{text-align:center;font-size:14px;color:var(--dim)}
+#ib{display:none}
+</style>
+</head>
+<body>
+<main class="w">
+ <header class="top">
+  <img src="icon-512.png" alt="">
+  <h1>مرسام البكسل</h1>
+  <span class="tag">نسخة تجريبية (بيتا)</span>
+  <p>ارسم بكسل آرت من جوالك بسهولة. مجاني، وبدون تسجيل.</p>
+ </header>
+
+ <a class="btn go" href="app.html">افتح المرسام</a>
+ <button class="btn inst" id="ib" type="button">ثبّته على هاتفك</button>
+
+ <section class="card">
+  <h2>ثبّته كتطبيق على هاتفك</h2>
+  <p>يظهر على شاشتك مثل أي تطبيق، ويفتح بدون شريط المتصفح.</p>
+  <ol>
+   <li><b>أندرويد (Chrome):</b> اضغط ⋮ ثم <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>.</li>
+   <li><b>آيفون (Safari):</b> اضغط زر المشاركة ثم <b>إضافة إلى الشاشة الرئيسية</b>.</li>
+  </ol>
+ </section>
+
+ <section class="card note">
+  <h2>قبل ما تبدأ</h2>
+  <ol>
+   <li>هذي نسخة تجريبية، وقد تلاقي أخطاء أو أشياء ناقصة. نطوّرها شوي شوي.</li>
+   <li>رسوماتك تنحفظ على جهازك فقط. اصدّر ما تريد حفظه.</li>
+   <li>التطبيق يلتزم بضوابط الإسلام، وتوافق على الشروط عند أول فتح.</li>
+  </ol>
+ </section>
+
+ <button class="btn inst" id="ub" type="button">تحديث إلى آخر نسخة</button>
+ <p class="foot">مرسام البكسل · مجاني للجميع</p>
+</main>
+<script>
+var dp=null,ib=document.getElementById('ib');
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;ib.style.display='block';});
+ib.onclick=function(){if(!dp)return;dp.prompt();dp.userChoice.then(function(){dp=null;ib.style.display='none';});};
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
+document.getElementById('ub').onclick=function(){var d=function(){location.reload();},ps=[];try{if(navigator.serviceWorker)ps.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister();}));}));if(window.caches)ps.push(caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x);}));}));Promise.all(ps).then(d,d);}catch(e){d();}};
+</script>
+</body>
+</html>
