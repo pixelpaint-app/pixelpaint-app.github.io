@@ -62,6 +62,7 @@ p{margin:0;color:var(--dim)}
   </ol>
  </section>
 
+ <button class="btn inst" id="ub" type="button">تحديث إلى آخر نسخة</button>
  <p class="foot">مرسام البكسل · مجاني للجميع</p>
 </main>
 <script>
@@ -69,6 +70,7 @@ var dp=null,ib=document.getElementById('ib');
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;ib.style.display='block';});
 ib.onclick=function(){if(!dp)return;dp.prompt();dp.userChoice.then(function(){dp=null;ib.style.display='none';});};
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
+document.getElementById('ub').onclick=function(){var d=function(){location.reload();},ps=[];try{if(navigator.serviceWorker)ps.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister();}));}));if(window.caches)ps.push(caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x);}));}));Promise.all(ps).then(d,d);}catch(e){d();}};
 </script>
 </body>
 </html>
